@@ -91,7 +91,7 @@ Include all BRs, BRULEs, NFRs, and user stories. Test Case column may contain pl
 - Save spec to `<project>/spec.md`.
 - Include DoD check for the spec itself: all BRs traced, all FRs have acceptance criteria, matrix is complete.
 - Provide summary to orchestrator in Russian.
-- **Persist to memory:** Call `MemoryWrite` with a detailed Russian summary of the specification (500-1000 tokens). Include file path, all FR/SR identifiers with key acceptance criteria, CLI flags and their conflicts, cache TTL rule, API contracts, and traceability matrix summary. Do NOT duplicate the full markdown text; keep it concise but searchable.
+- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens). Include file path, key FR/SR identifiers, CLI flags and conflicts, cache behavior, and traceability matrix summary. For detailed questions, read the spec file directly rather than duplicating its full text.
 
 ## Output Language
 

@@ -134,7 +134,7 @@ DoD: X/10
 - Update `status: review` in frontmatter.
 - Save file.
 - Provide summary to orchestrator / user in Russian, including the list of BR/BRULE/NFR identifiers. These identifiers will be used by the System Analyst to build the traceability matrix.
-- **Persist to memory:** Call `MemoryWrite` with a detailed Russian summary of the BRD (500-1000 tokens). Include file path, goal, user story, all BR/BRULE/NFR identifiers with priorities and key acceptance criteria, main risks, and DoR/DoD status. Do NOT duplicate the full markdown text; keep it concise but searchable.
+- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the BRD (250-500 tokens). Include file path, goal, user story, key BR/BRULE/NFR identifiers with priorities, and main risks. For detailed questions, read the BRD file directly rather than duplicating its full text.
 
 ## Anti-patterns
 
@@ -142,6 +142,7 @@ DoD: X/10
 - Do NOT skip DoR verification.
 - Do NOT create BRD in English unless explicitly asked.
 - Do NOT use verbal requirement codes like `BR-DEL` or `NFR-AVAIL`.
+- Do NOT copy the BRD file into `~/.hermes/memories/` or create symlinks there for indexing. remindb's source root is restricted and symlinks are ignored. Use `MemoryWrite` summaries instead.
 
 ## Output
 

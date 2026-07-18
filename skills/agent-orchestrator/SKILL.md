@@ -97,7 +97,7 @@ toolsets: ["file", "terminal", "code_exec"]
 **After each sub-agent returns:**
 1. If it produced a new or updated artifact, copy it into `AI-harness/projects/<project-name>/` (creating the folder if needed).
 2. Commit and push to GitHub with a descriptive message (e.g., `feat(brd): <project> business requirements`).
-3. **Persist a detailed summary to remindb with `MemoryWrite`.** Do NOT duplicate the artifact file into `~/.hermes/memories/projects/`; remindb's source root is restricted and symlinks are not indexed. The summary must be dense enough for semantic search: include the file path, all requirement identifiers (BR/FR/SR/AC), key decisions, acceptance criteria, unresolved findings, and any explicit human-gate status. See `references/remindb-semantic-search-workaround.md`.
+3. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the artifact (250-500 tokens) including the file path, stage, key decisions/requirements, identifiers, and any unresolved findings. For detailed questions, read the source artifact directly. Do NOT duplicate the artifact file into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
 4. Optionally run `MemorySearch` with a representative query to verify the summary is retrievable.
 
 **Human Gate after Analyst (hard stop):** If the BRD DoD is not 10/10 (i.e., DD8 human gate is pending) or there are blocking open questions, the orchestrator MUST stop and ask the user for approval before proceeding to the Architect. Do NOT proceed automatically.
@@ -114,7 +114,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the architect sub-agent returns:**
 1. Copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
-2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, architectural components, source selection and API contracts, cache strategy, CLI flags, error-handling approach, and any unresolved critical findings.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the HLD (250-500 tokens) including file path, architectural components, source selection, API contracts, cache strategy, CLI flags, and any unresolved findings. For details, read the HLD file directly.
 
 **Human Gate after Architect:** If the HLD contains unresolved critical findings, unresolved open questions inherited from the BRD, or the user has not yet approved the previous BRD human gate, the orchestrator MUST stop and ask the user before proceeding to the System Analyst.
 
@@ -130,7 +130,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the system analyst sub-agent returns:**
 1. Copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
-2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, all FR/SR identifiers, CLI reference and conflicts, API contracts, cache TTL rule, acceptance criteria, traceability matrix summary, and any unresolved critical findings.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens) including file path, key FR/SR identifiers, CLI reference and conflicts, cache TTL rule, and traceability matrix summary. For details, read the spec file directly.
 
 **Human Gate after System Analyst:** If the specification contains unresolved critical findings, unresolved open questions, or traceability gaps that block implementation, the orchestrator MUST stop and ask the user before proceeding to the Quality Gate.
 
@@ -146,7 +146,7 @@ toolsets: ["file", "terminal"]
 
 **After the quality-gate sub-agent returns (even if the pipeline stops):**
 1. Copy the review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(review): <project> quality gate review`.
-2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, verdict (PASS / PASS WITH FINDINGS / FAIL), all findings with severity, recommendations, and any actions taken or still required.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the review (250-500 tokens) including file path, verdict, all findings with severity, recommendations, and any actions taken or still required. For details, read the review file directly.
 3. **Human Gate rule (hard stop):** The orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
 4. Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
 
@@ -162,7 +162,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the developer sub-agent returns:**
 1. Copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
-2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include changed files, key implementation decisions, test results, exit codes, and any deviations from the specification.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the implementation (250-500 tokens) including changed files, key decisions, test results, exit codes, and any deviations from the specification. For details, read the source files directly.
 
 ### Step 6: Tester (only after human gate approval)
 
@@ -176,9 +176,9 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the tester sub-agent returns:**
 1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
-2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, verdict, executed test cases, coverage, top defects with severity, and recommendations.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the test report (250-500 tokens) including file path, verdict, executed test cases, coverage, top defects with severity, and recommendations. For details, read the test report directly.
 
-**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist a detailed summary of the skill change to remindb.
+**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist a concise summary of the skill change to remindb.
 
 ### Step 7: Final summary
 
