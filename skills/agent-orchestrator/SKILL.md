@@ -81,7 +81,9 @@ context: "User request: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the analyst sub-agent returns:** if it produced a new or updated artifact, copy it into the `AI-harness/projects/<project-name>/` directory (creating the folder if needed), then commit and push to GitHub with a descriptive message such as `feat(brd): <project> business requirements`.
+**After the analyst sub-agent returns:**
+1. If it produced a new or updated artifact, copy it into the `AI-harness/projects/<project-name>/` directory (creating the folder if needed), then commit and push to GitHub with a descriptive message such as `feat(brd): <project> business requirements`.
+2. Persist the artifact metadata to remindb with `MemoryWrite` so it can be recalled in later sessions. Payload example: "Created BRD for project <name> at AI-harness/projects/<project>/brd.md. Scope: <brief>. Status: DoR X/Y, DoD X/Y."
 
 ### Step 2: Architect
 
@@ -93,7 +95,9 @@ context: "BRD from previous step: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the architect sub-agent returns:** copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
+**After the architect sub-agent returns:**
+1. Copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
+2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created HLD for project <name> at AI-harness/projects/<project>/hld.md. Key decisions: <brief list>."
 
 ### Step 3: System Analyst
 
@@ -105,7 +109,9 @@ context: "BRD: <...>\nHLD: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the system analyst sub-agent returns:** copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
+**After the system analyst sub-agent returns:**
+1. Copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
+2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created specification for project <name> at AI-harness/projects/<project>/spec.md. FR count: N, SR count: M."
 
 ### Step 4: Quality Gate
 
@@ -119,7 +125,9 @@ toolsets: ["file", "terminal"]
 
 **Human Gate rule (hard stop):** After the quality-gate sub-agent returns, the orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
 
-**After the quality-gate sub-agent returns (even if the pipeline stops):** copy the review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(review): <project> quality gate review`.
+**After the quality-gate sub-agent returns (even if the pipeline stops):**
+1. Copy the review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(review): <project> quality gate review`.
+2. Persist the review verdict and findings to remindb with `MemoryWrite`. Payload example: "Quality gate review for project <name>: PASS WITH FINDINGS. Top findings: ..."
 
 Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
 
@@ -133,7 +141,9 @@ context: "Specification: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the developer sub-agent returns:** copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
+**After the developer sub-agent returns:**
+1. Copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
+2. Persist the implementation metadata to remindb with `MemoryWrite`. Payload example: "Implemented project <name>. Changed files: <list>. Test results: <brief>."
 
 ### Step 6: Tester (only after human gate approval)
 
@@ -145,9 +155,11 @@ context: "Implementation: <...>\nSpecification: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the tester sub-agent returns:** copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
+**After the tester sub-agent returns:**
+1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
+2. Persist the test verdict and top findings to remindb with `MemoryWrite`. Payload example: "Test report for project <name>: PASS WITH DEFECTS. Top findings: ..."
 
-**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`.
+**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist the skill update to remindb.
 
 ### Step 7: Final summary
 
