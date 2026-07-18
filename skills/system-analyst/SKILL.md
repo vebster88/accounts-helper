@@ -91,7 +91,7 @@ Include all BRs, BRULEs, NFRs, and user stories. Test Case column may contain pl
 - Save spec to `<project>/spec.md`.
 - Include DoD check for the spec itself: all BRs traced, all FRs have acceptance criteria, matrix is complete.
 - Provide summary to orchestrator in Russian.
-- **Index for semantic search:** Copy the final BRD, HLD, and Spec into `~/.hermes/memories/projects/<project-name>/` (create directories if needed), then run `remindb compile /home/hermes_ai/.hermes/memories --db /home/hermes_ai/.cache/remindb/hermes.db --message "Index <project> specification package"`.
+- **Persist to memory:** Call `MemoryWrite` with a detailed Russian summary of the specification (500-1000 tokens). Include file path, all FR/SR identifiers with key acceptance criteria, CLI flags and their conflicts, cache TTL rule, API contracts, and traceability matrix summary. Do NOT duplicate the full markdown text; keep it concise but searchable.
 
 ## Output Language
 

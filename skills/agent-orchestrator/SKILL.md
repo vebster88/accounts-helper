@@ -34,6 +34,8 @@ Orchestrator (this skill)
 ## Adapting OpenCode Skills to Hermes
 
 This skill is typically built by porting an existing OpenCode harness. See
+See `references/remindb-semantic-search-workaround.md` for the preferred way to make project artifacts searchable in remindb without duplicating files outside the source root.
+
 See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
 permission blocks) to Hermes equivalents (`delegate_task`, `Memory*`,
@@ -95,9 +97,8 @@ toolsets: ["file", "terminal", "code_exec"]
 **After each sub-agent returns:**
 1. If it produced a new or updated artifact, copy it into `AI-harness/projects/<project-name>/` (creating the folder if needed).
 2. Commit and push to GitHub with a descriptive message (e.g., `feat(brd): <project> business requirements`).
-3. Copy the same artifact(s) into `~/.hermes/memories/projects/<project-name>/` for semantic search indexing.
-4. Run `remindb compile /home/hermes_ai/.hermes/memories --db /home/hermes_ai/.cache/remindb/hermes.db --message "Index <project> <stage>"`.
-5. Persist the artifact metadata to remindb with `MemoryWrite`.
+3. **Persist a detailed summary to remindb with `MemoryWrite`.** Do NOT duplicate the artifact file into `~/.hermes/memories/projects/`; remindb's source root is restricted and symlinks are not indexed. The summary must be dense enough for semantic search: include the file path, all requirement identifiers (BR/FR/SR/AC), key decisions, acceptance criteria, unresolved findings, and any explicit human-gate status. See `references/remindb-semantic-search-workaround.md`.
+4. Optionally run `MemorySearch` with a representative query to verify the summary is retrievable.
 
 **Human Gate after Analyst (hard stop):** If the BRD DoD is not 10/10 (i.e., DD8 human gate is pending) or there are blocking open questions, the orchestrator MUST stop and ask the user for approval before proceeding to the Architect. Do NOT proceed automatically.
 
@@ -113,7 +114,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the architect sub-agent returns:**
 1. Copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
-2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created HLD for project <name> at AI-harness/projects/<project>/hld.md. Key decisions: <brief list>."
+2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, architectural components, source selection and API contracts, cache strategy, CLI flags, error-handling approach, and any unresolved critical findings.
 
 **Human Gate after Architect:** If the HLD contains unresolved critical findings, unresolved open questions inherited from the BRD, or the user has not yet approved the previous BRD human gate, the orchestrator MUST stop and ask the user before proceeding to the System Analyst.
 
@@ -129,7 +130,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the system analyst sub-agent returns:**
 1. Copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
-2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created specification for project <name> at AI-harness/projects/<project>/spec.md. FR count: N, SR count: M."
+2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, all FR/SR identifiers, CLI reference and conflicts, API contracts, cache TTL rule, acceptance criteria, traceability matrix summary, and any unresolved critical findings.
 
 **Human Gate after System Analyst:** If the specification contains unresolved critical findings, unresolved open questions, or traceability gaps that block implementation, the orchestrator MUST stop and ask the user before proceeding to the Quality Gate.
 
@@ -143,13 +144,11 @@ context: "Full package: <...>"
 toolsets: ["file", "terminal"]
 ```
 
-**Human Gate rule (hard stop):** After the quality-gate sub-agent returns, the orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
-
 **After the quality-gate sub-agent returns (even if the pipeline stops):**
 1. Copy the review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(review): <project> quality gate review`.
-2. Persist the review verdict and findings to remindb with `MemoryWrite`. Payload example: "Quality gate review for project <name>: PASS WITH FINDINGS. Top findings: ..."
-
-Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
+2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, verdict (PASS / PASS WITH FINDINGS / FAIL), all findings with severity, recommendations, and any actions taken or still required.
+3. **Human Gate rule (hard stop):** The orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
+4. Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
 
 ### Step 5: Developer (only after human gate approval)
 
@@ -163,7 +162,7 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the developer sub-agent returns:**
 1. Copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
-2. Persist the implementation metadata to remindb with `MemoryWrite`. Payload example: "Implemented project <name>. Changed files: <list>. Test results: <brief>."
+2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include changed files, key implementation decisions, test results, exit codes, and any deviations from the specification.
 
 ### Step 6: Tester (only after human gate approval)
 
@@ -177,9 +176,9 @@ toolsets: ["file", "terminal", "code_exec"]
 
 **After the tester sub-agent returns:**
 1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
-2. Persist the test verdict and top findings to remindb with `MemoryWrite`. Payload example: "Test report for project <name>: PASS WITH DEFECTS. Top findings: ..."
+2. **Persist a detailed summary to remindb with `MemoryWrite`.** Include file path, verdict, executed test cases, coverage, top defects with severity, and recommendations.
 
-**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist the skill update to remindb.
+**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist a detailed summary of the skill change to remindb.
 
 ### Step 7: Final summary
 
