@@ -102,6 +102,8 @@ Sections in Russian:
 
 Requirement codes must match `^[A-Z]+-\d{2}$` (e.g. `BR-01`, `NFR-01`).
 
+**Traceability preparation:** For every BR and BRULE, include a stable identifier and concise description so that the System Analyst can map them to FR/SR in the traceability matrix. Avoid vague or overlapping requirements.
+
 ### Step 6: Risks + prerequisites
 
 - `## Риски (R-NN)`
@@ -131,7 +133,7 @@ DoD: X/10
 
 - Update `status: review` in frontmatter.
 - Save file.
-- Provide summary to orchestrator / user in Russian.
+- Provide summary to orchestrator / user in Russian, including the list of BR/BRULE/NFR identifiers. These identifiers will be used by the System Analyst to build the traceability matrix.
 
 ## Anti-patterns
 
