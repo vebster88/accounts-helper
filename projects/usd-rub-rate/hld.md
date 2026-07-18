@@ -1,5 +1,5 @@
 ---
-status: draft
+status: review
 title: HLD — Скрипт отображения курса USD/RUB
 author: Architect sub-agent
 project: /home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate
