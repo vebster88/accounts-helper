@@ -34,10 +34,14 @@ Orchestrator (this skill)
 ## Adapting OpenCode Skills to Hermes
 
 This skill is typically built by porting an existing OpenCode harness. See
-`references/opencode-to-hermes-adaptation.md` for the exact mapping of
+`references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
 permission blocks) to Hermes equivalents (`delegate_task`, `Memory*`,
 Linux paths, toolsets).
+
+See `references/opencode-to-hermes-harness-port.md` for the concrete
+end-to-end port of the `Analyst` harness, including the sequential-pipeline
+correction and the GitHub sync rule.
 
 ## Constraints of Hermes delegate_task
 
@@ -77,6 +81,8 @@ context: "User request: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
+**After the analyst sub-agent returns:** if it produced a new or updated artifact, copy it into the `AI-harness/projects/<project-name>/` directory (creating the folder if needed), then commit and push to GitHub with a descriptive message such as `feat(brd): <project> business requirements`.
+
 ### Step 2: Architect
 
 Delegate to the `architect` skill with the BRD.
@@ -87,6 +93,8 @@ context: "BRD from previous step: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
+**After the architect sub-agent returns:** copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
+
 ### Step 3: System Analyst
 
 Delegate to the `system-analyst` skill with BRD + HLD.
@@ -96,6 +104,8 @@ goal: "Act as a system analyst. Read the BRD and HLD and produce a detailed spec
 context: "BRD: <...>\nHLD: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
+
+**After the system analyst sub-agent returns:** copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
 
 ### Step 4: Quality Gate
 
@@ -109,6 +119,8 @@ toolsets: ["file", "terminal"]
 
 **Human Gate rule (hard stop):** After the quality-gate sub-agent returns, the orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
 
+**After the quality-gate sub-agent returns (even if the pipeline stops):** copy the review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(review): <project> quality gate review`.
+
 Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
 
 ### Step 5: Developer (only after human gate approval)
@@ -121,6 +133,8 @@ context: "Specification: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
+**After the developer sub-agent returns:** copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
+
 ### Step 6: Tester (only after human gate approval)
 
 Delegate to the `tester` skill with the implementation.
@@ -130,6 +144,10 @@ goal: "Act as a tester. Verify the implementation against the specification, wri
 context: "Implementation: <...>\nSpecification: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
+
+**After the tester sub-agent returns:** copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
+
+**If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`.
 
 ### Step 7: Final summary
 
@@ -156,3 +174,4 @@ toolsets: ["file", "terminal", "code_exec"]
 - Never run `sudo`, `systemctl restart`, destructive commands, or network-wide changes without explicit user approval at the current step.
 - The developer sub-agent must ask for approval before running tests that modify state or use external services.
 - Each sub-agent must fit its output within the available context window; use summaries when artifacts are large.
+- **GitHub sync rule:** project artifacts, skills, and agent definitions live in the user's GitHub repository (`AI-harness`). Push only `agents/`, `skills/`, `projects/`, `scripts/`, `docs/`; exclude archives, credentials, logs, caches, OS/IDE files. After editing skills in `~/.hermes/skills/`, copy changes back to the repo and commit/push. After pulling updates, copy `skills/` into `~/.hermes/skills/` to activate them.
