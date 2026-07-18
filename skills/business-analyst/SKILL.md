@@ -134,6 +134,7 @@ DoD: X/10
 - Update `status: review` in frontmatter.
 - Save file.
 - Provide summary to orchestrator / user in Russian, including the list of BR/BRULE/NFR identifiers. These identifiers will be used by the System Analyst to build the traceability matrix.
+- **Index for semantic search:** Copy the final BRD into `~/.hermes/memories/projects/<project-name>/brd.md` (create directories if needed), then run `remindb compile /home/hermes_ai/.hermes/memories --db /home/hermes_ai/.cache/remindb/hermes.db --message "Index <project> BRD"`.
 
 ## Anti-patterns
 

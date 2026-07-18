@@ -34,7 +34,7 @@ Orchestrator (this skill)
 ## Adapting OpenCode Skills to Hermes
 
 This skill is typically built by porting an existing OpenCode harness. See
-`references/opencode-to-hermes-adaptation.md` for the generic mapping of
+See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
 permission blocks) to Hermes equivalents (`delegate_task`, `Memory*`,
 Linux paths, toolsets).
@@ -46,6 +46,13 @@ correction.
 See `references/github-sync-and-memory-workflow.md` for the concrete
 GitHub sync, PAT authentication, skill copy-back rule, and remindb
 artifact-persistence workflow used in production runs.
+
+See `references/human-gate-checklist.md` and `references/human-gate-rules.md` for the human gate decision tree, the hard stop rules after every document stage, and the specific correction learned when the orchestrator once proceeded past a BA-stage DoD 9/10 instead of stopping for approval.
+
+See `references/traceability-matrix-standard.md` for the required traceability matrix format and mapping rules (BRD → HLD → Spec → AC → Test Case).
+
+See `references/pipeline-runbook.md` for real-world patterns, the
+GitHub sync/remindb memory checklist, and traceability expectations.
 
 ## Constraints of Hermes delegate_task
 
@@ -85,9 +92,12 @@ context: "User request: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After the analyst sub-agent returns:**
-1. If it produced a new or updated artifact, copy it into the `AI-harness/projects/<project-name>/` directory (creating the folder if needed), then commit and push to GitHub with a descriptive message such as `feat(brd): <project> business requirements`.
-2. Persist the artifact metadata to remindb with `MemoryWrite` so it can be recalled in later sessions. Payload example: "Created BRD for project <name> at AI-harness/projects/<project>/brd.md. Scope: <brief>. Status: DoR X/Y, DoD X/Y."
+**After each sub-agent returns:**
+1. If it produced a new or updated artifact, copy it into `AI-harness/projects/<project-name>/` (creating the folder if needed).
+2. Commit and push to GitHub with a descriptive message (e.g., `feat(brd): <project> business requirements`).
+3. Copy the same artifact(s) into `~/.hermes/memories/projects/<project-name>/` for semantic search indexing.
+4. Run `remindb compile /home/hermes_ai/.hermes/memories --db /home/hermes_ai/.cache/remindb/hermes.db --message "Index <project> <stage>"`.
+5. Persist the artifact metadata to remindb with `MemoryWrite`.
 
 **Human Gate after Analyst (hard stop):** If the BRD DoD is not 10/10 (i.e., DD8 human gate is pending) or there are blocking open questions, the orchestrator MUST stop and ask the user for approval before proceeding to the Architect. Do NOT proceed automatically.
 
