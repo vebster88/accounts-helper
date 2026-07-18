@@ -1,0 +1,36 @@
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# OS / IDE
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.venv/
+
+# Logs / caches
+*.log
+.cache/
+
+# Credentials and environment
+.env
+*.token
+auth.json
+.netrc
+
+# Temporary files
+tmp/
+temp/
