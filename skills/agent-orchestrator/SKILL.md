@@ -41,7 +41,11 @@ Linux paths, toolsets).
 
 See `references/opencode-to-hermes-harness-port.md` for the concrete
 end-to-end port of the `Analyst` harness, including the sequential-pipeline
-correction and the GitHub sync rule.
+correction.
+
+See `references/github-sync-and-memory-workflow.md` for the concrete
+GitHub sync, PAT authentication, skill copy-back rule, and remindb
+artifact-persistence workflow used in production runs.
 
 ## Constraints of Hermes delegate_task
 
@@ -85,7 +89,9 @@ toolsets: ["file", "terminal", "code_exec"]
 1. If it produced a new or updated artifact, copy it into the `AI-harness/projects/<project-name>/` directory (creating the folder if needed), then commit and push to GitHub with a descriptive message such as `feat(brd): <project> business requirements`.
 2. Persist the artifact metadata to remindb with `MemoryWrite` so it can be recalled in later sessions. Payload example: "Created BRD for project <name> at AI-harness/projects/<project>/brd.md. Scope: <brief>. Status: DoR X/Y, DoD X/Y."
 
-### Step 2: Architect
+**Human Gate after Analyst (hard stop):** If the BRD DoD is not 10/10 (i.e., DD8 human gate is pending) or there are blocking open questions, the orchestrator MUST stop and ask the user for approval before proceeding to the Architect. Do NOT proceed automatically.
+
+### Step 2: Architect (only after BA human gate approval)
 
 Delegate to the `architect` skill with the BRD.
 
@@ -99,7 +105,9 @@ toolsets: ["file", "terminal", "code_exec"]
 1. Copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
 2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created HLD for project <name> at AI-harness/projects/<project>/hld.md. Key decisions: <brief list>."
 
-### Step 3: System Analyst
+**Human Gate after Architect:** If the HLD contains unresolved critical findings, unresolved open questions inherited from the BRD, or the user has not yet approved the previous BRD human gate, the orchestrator MUST stop and ask the user before proceeding to the System Analyst.
+
+### Step 3: System Analyst (only after architect approval)
 
 Delegate to the `system-analyst` skill with BRD + HLD.
 
@@ -113,7 +121,9 @@ toolsets: ["file", "terminal", "code_exec"]
 1. Copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
 2. Persist the artifact metadata to remindb with `MemoryWrite`. Payload example: "Created specification for project <name> at AI-harness/projects/<project>/spec.md. FR count: N, SR count: M."
 
-### Step 4: Quality Gate
+**Human Gate after System Analyst:** If the specification contains unresolved critical findings, unresolved open questions, or traceability gaps that block implementation, the orchestrator MUST stop and ask the user before proceeding to the Quality Gate.
+
+### Step 4: Quality Gate (only after SA human gate approval)
 
 Delegate to the `quality-gate` skill with the full specification.
 
