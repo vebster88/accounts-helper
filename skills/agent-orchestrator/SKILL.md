@@ -29,7 +29,18 @@ Orchestrator (this skill)
 5. Developer — implements the solution
     ↓
 6. Tester — verifies and writes tests
+    ↓
+7. Quality Gate 2 — code review of implementation
 ```
+
+### Quality Gate 2
+
+After testing, run `quality-gate-2` to review the actual code diff:
+- finds bugs, security issues, performance traps, error-handling gaps, test coverage problems
+- produces `code-review-report.md`
+- verdict: `APPROVE` / `CONDITIONALLY APPROVE` / `REQUEST CHANGES`
+
+The pipeline is complete only after Quality Gate 2.
 
 ## Adapting OpenCode Skills to Hermes
 
@@ -42,6 +53,8 @@ See `references/venv-and-deployment-planning.md` for the user's explicit prefere
 See `references/remindb-artifact-search.md` for the current preferred way to make pipeline artifacts searchable in remindb: use concise `MemoryWrite` summaries (250–500 tokens) and read the source artifact for details. Do not duplicate files into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
 See `references/hermes-cron-script-path-workaround.md` for the exact Hermes cron script-path limitation and the wrapper-file workaround used to deploy `daily_digest.py`.
 
+See `references/quality-gate-hermes-cron-pitfalls.md` for the consolidated Hermes cron deployment checks a quality gate should apply to any spec/HLD that schedules scripts.
+
 See `references/pipeline-example-daily-telegram-digest.md` for the concrete end-to-end
 run that combined `weather_daily.py` and `usd_rub_rate.py` into a single cron job, including the Hermes cron path workaround and the plain-text Markdown stripping pitfall.
 
@@ -50,11 +63,21 @@ See `references/telegram-plain-text-markdown-stripping.md` for the safe characte
 See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
 MCP tools) to Hermes tools and skills.
+
+See `references/pipeline-example-weather-multi-city.md` for the concrete end-to-end
 run that produced the multi-city `weather_daily.py` implementation.
 
 See `references/pipeline-example-usd-rub-rate.md` for the concrete end-to-end
 run that produced the `usd_rub_rate.py` implementation, including the remindb
 memory-strategy correction and the human-gate fix after the BA stage.
+
+See `references/pipeline-example-daily-telegram-digest.md` for the concrete end-to-end
+run that combined `weather_daily.py` and `usd_rub_rate.py` into a single cron job,
+including the Hermes cron path workaround and the plain-text Markdown stripping pitfall.
+
+See `references/opencode-skills-inventory.md` for the full list of OpenCode skills
+available in the user's `Analyst.tar` archive, their port status, and recommended
+next ports (`architect` is the biggest remaining gap after `quality-gate`).
 
 See `references/opencode-to-hermes-harness-port.md` for the concrete
 end-to-end port of the `Analyst` harness, including the sequential-pipeline
@@ -93,6 +116,8 @@ When the final artifact is a script that must be scheduled with `hermes cron cre
 3. Cron command uses `--script "<name>_wrapper.sh"`.
 
 See `references/hermes-cron-script-path-workaround.md`.
+
+See `quality-gate/references/hermes-cron-pitfalls.md` for the consolidated Hermes cron deployment checks a quality gate should apply to any spec/HLD that schedules scripts.
 
 ### Plain-text Telegram pitfall: Markdown stripping
 
@@ -208,21 +233,37 @@ toolsets: ["file", "terminal", "code_exec"]
 1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
 2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the test report (250-500 tokens) including file path, verdict, executed test cases, coverage, top defects with severity, and recommendations. For details, read the test report directly.
 
+### Step 7: Quality Gate 2 — Code Review (only after tester returns)
+
+Delegate to the `quality-gate-2` skill with the implementation diff and test report.
+
+```text
+goal: "Act as a code reviewer. Review the implementation diff for bugs, security, performance, error handling, and test coverage. Save code-review-report.md and report verdict."
+context: "Project: <...>, workdir: <...>, test report: <...>, last commit / branch diff."
+toolsets: ["file", "terminal"]
+```
+
+**After the quality-gate-2 sub-agent returns:**
+1. Copy the code review report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(code-review): <project> quality gate 2 report`.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the code review (250-500 tokens) including file path, verdict, critical/warning/info counts, top findings, and required fixes. For details, read the report directly.
+3. **Human Gate rule (hard stop):** If the verdict is `REQUEST CHANGES` or there are critical findings, stop and ask the user whether to fix the code first or proceed. Do NOT consider the pipeline complete without user decision.
+
 **If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist a concise summary of the skill change to remindb.
 
-### Step 7: Final summary
+### Step 8: Final summary
 
-- If the pipeline stopped at the human gate: report that the implementation and testing steps were skipped pending user approval, and ask what the user wants to do next.
-- If the pipeline ran through Developer and Tester: summarize to the user in Russian:
+- If the pipeline stopped at the human gate: report that subsequent steps were skipped pending user approval, and ask what the user wants to do next.
+- If the pipeline ran through Developer, Tester, and Quality Gate 2: summarize to the user in Russian:
   - What was requested
   - Key decisions made by each agent
-  - DoR/DoD/quality-gate result
+  - DoR/DoD/quality-gate results
   - What code/tests were produced
+  - Quality Gate 2 verdict and any required fixes
   - Any remaining open questions or risks
 
 ## Memory and Context
 
-- Before delegating, search remindb for relevant context: `MemorySearch` with keywords from the request.
+- Before delegating or answering project questions, search remindb first: `MemorySearch` with keywords from the request. Only fall back to reading files or running terminal commands if memory is missing, unclear, or the user explicitly asks for a fresh/verified read. See `references/memory-first-lookup-rule.md`.
 - After each sub-agent returns, persist a concise summary via `MemoryWrite` (see `references/remindb-artifact-search.md`). Read the source artifact directly when the user asks for details.
 
 ## Output Language
