@@ -10,6 +10,7 @@ import socket
 import sys
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,11 +25,13 @@ DEFAULT_TTL = 300  # seconds
 SOURCES = {
     "cbr": {
         "name": "ЦБ РФ",
-        "url": "https://www.cbr-xml-daily.ru/daily_json.js",
+        "url": "https://www.cbr.ru/scripts/XML_daily.asp",
+        "accept": "application/xml",
     },
     "fallback": {
         "name": "open.er-api.com",
         "url": "https://open.er-api.com/v6/latest/USD",
+        "accept": "application/json",
     },
 }
 
@@ -50,7 +53,7 @@ def get_user_agent() -> str:
     return f"usd-rub-rate/{__version__}"
 
 
-def fetch(url: str, timeout: float) -> bytes:
+def fetch(url: str, timeout: float, accept: str) -> bytes:
     """Perform an HTTPS GET request and return response body as bytes."""
     parsed = urlparse(url)
     if parsed.scheme != "https":
@@ -59,7 +62,7 @@ def fetch(url: str, timeout: float) -> bytes:
     req = urllib.request.Request(
         url,
         headers={
-            "Accept": "application/json",
+            "Accept": accept,
             "User-Agent": get_user_agent(),
         },
     )
@@ -72,20 +75,48 @@ def fetch(url: str, timeout: float) -> bytes:
         return resp.read()
 
 
+def _decode_cbr_response(data: bytes) -> str:
+    """Decode CBR XML from windows-1251 with utf-8 fallback."""
+    try:
+        return data.decode("windows-1251")
+    except UnicodeDecodeError:
+        return data.decode("utf-8")
+
+
 def parse_cbr(data: bytes) -> RateResult:
-    """Parse the cbr-xml-daily.ru JSON response."""
-    payload = json.loads(data.decode("utf-8"))
-    rate = payload["Valute"]["USD"]["Value"]
-    date_str = payload["Date"]
-    timestamp = parse_iso_datetime(date_str)
-    if timestamp.tzinfo is None:
-        timestamp = timestamp.replace(tzinfo=MSK)
-    return RateResult(
-        rate=float(rate),
-        source="cbr",
-        source_name=SOURCES["cbr"]["name"],
-        timestamp=timestamp,
-    )
+    """Parse the official CBR XML response (windows-1251)."""
+    text = _decode_cbr_response(data)
+    root = ET.fromstring(text)
+
+    date_attr = root.get("Date")
+    if not date_attr:
+        raise ValueError("Missing ValCurs/@Date attribute")
+    try:
+        date = datetime.strptime(date_attr, "%d.%m.%Y").date()
+    except ValueError as exc:
+        raise ValueError(f"Invalid ValCurs/@Date: {date_attr}") from exc
+
+    for valute in root.findall("Valute"):
+        char_code = valute.find("CharCode")
+        if char_code is None or char_code.text != "USD":
+            continue
+        value_elem = valute.find("Value")
+        if value_elem is None or value_elem.text is None:
+            raise ValueError("USD Valute has no Value")
+        value_text = value_elem.text.strip().replace(",", ".")
+        try:
+            rate = float(value_text)
+        except ValueError as exc:
+            raise ValueError(f"Invalid USD Value: {value_elem.text}") from exc
+
+        return RateResult(
+            rate=rate,
+            source="cbr",
+            source_name=SOURCES["cbr"]["name"],
+            timestamp=datetime.combine(date, datetime.min.time()).replace(tzinfo=MSK),
+        )
+
+    raise ValueError("USD Valute not found in CBR XML")
 
 
 def parse_fallback(data: bytes) -> RateResult:
@@ -102,25 +133,8 @@ def parse_fallback(data: bytes) -> RateResult:
     )
 
 
-def parse_iso_datetime(value: str) -> datetime:
-    """Parse ISO-8601 datetime strings, including space-separated variants."""
-    value = value.strip()
-    # Replace space before timezone offset with '+' or '-' as needed
-    if " " in value and ("+" in value or value.count("-") > 2):
-        # Some APIs use "2026-07-19 11:30:00+03:00"
-        value = value.replace(" ", "T", 1)
-    # fromisoformat handles offsets like +03:00 and Z
-    try:
-        return datetime.fromisoformat(value)
-    except ValueError:
-        pass
-    # Fallback for RFC 1123 style fallback strings handled elsewhere
-    raise ValueError(f"Cannot parse datetime: {value}")
-
-
 def parse_fallback_utc(value: str) -> datetime:
     """Parse UTC datetimes from open.er-api.com and convert to MSK."""
-    # Example: "Sat, 19 Jul 2026 00:00:00 +0000"
     value = value.strip()
     try:
         dt = datetime.fromisoformat(value.replace(" ", "T", 1))
@@ -229,11 +243,14 @@ def save_cache(path: Path, result: RateResult) -> None:
 
 def format_output(result: RateResult) -> str:
     """Format the RateResult for console output."""
-    ts = result.timestamp.astimezone(MSK).strftime("%Y-%m-%d %H:%M:%S")
+    if result.source == "cbr":
+        ts = result.timestamp.astimezone(MSK).strftime("%Y-%m-%d")
+    else:
+        ts = result.timestamp.astimezone(MSK).strftime("%Y-%m-%d %H:%M:%S MSK")
     suffix = ", кэш" if result.cached else ""
     return (
         f"USD/RUB: {result.rate:.2f} "
-        f"(источник: {result.source_name}, дата: {ts} MSK{suffix})"
+        f"(источник: {result.source_name}, дата: {ts}{suffix})"
     )
 
 
@@ -245,7 +262,7 @@ def fetch_source(
     """Fetch and parse a single source. Returns (result, failure_reason)."""
     config = SOURCES[source_key]
     try:
-        data = fetch(config["url"], timeout)
+        data = fetch(config["url"], timeout, config["accept"])
         parser: Callable[[bytes], RateResult]
         if source_key == "cbr":
             parser = parse_cbr
@@ -269,6 +286,8 @@ def fetch_source(
         reason = "timeout"
     except json.JSONDecodeError:
         reason = "invalid JSON"
+    except ET.ParseError:
+        reason = "invalid XML"
     except (KeyError, TypeError, ValueError):
         reason = "missing field"
     except Exception:  # noqa: BLE001
