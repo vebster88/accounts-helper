@@ -26,7 +26,7 @@ logging.basicConfig(
 WEATHER_SCRIPT = Path.home() / ".hermes" / "scripts" / "weather_daily.py"
 RATE_SCRIPT = Path("/home/hermes_ai/my_agent/AI-harness/scripts/usd_rub_rate.py")
 TELEGRAM_LIMIT = 4096
-MD_SPECIAL = re.escape(r"*_[]()~`>#+=|{}!")
+MD_SPECIAL = re.escape(r"*_[]()~`>#+= {}")
 MD_RE = re.compile(f"[{MD_SPECIAL}]")
 
 

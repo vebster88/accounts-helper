@@ -184,7 +184,7 @@ subprocess.run(
 ### FR-11. Markdown / plain text
 
 - Дайджест отправляется как **plain text**.
-- `daily_digest.py` удаляет Markdown-спецсимволы (`*`, `_`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `=`, `|`, `{`, `}`, `!`) из вывода `weather_daily.py` и `usd_rub_rate.py` перед сборкой сообщения.
+- `daily_digest.py` удаляет Markdown-спецсимволы (`*`, `_`, `[`, `]`, `(`, `)`, `~`, `` ` ``, `>`, `#`, `+`, `=`, `{`, `}`, `!`) из вывода `weather_daily.py` и `usd_rub_rate.py` перед сборкой сообщения.
 - Заголовок и подвал используют только безопасные символы (emoji, ASCII-разделитель, буквы/цифры).
 - Если в будущем потребуется Markdown-режим, он должен быть опциональным и управляться аргументом/переменной окружения.
 
@@ -638,7 +638,7 @@ logging.basicConfig(
 WEATHER_SCRIPT = Path.home() / ".hermes" / "scripts" / "weather_daily.py"
 RATE_SCRIPT = Path("/home/hermes_ai/my_agent/AI-harness/scripts/usd_rub_rate.py")
 TELEGRAM_LIMIT = 4096
-MD_SPECIAL = re.escape(r"*_[]()~`>#+=|{}!")
+MD_SPECIAL = re.escape(r"*_[]()~`>#+= {}")
 MD_RE = re.compile(f"[{MD_SPECIAL}]")
 
 
