@@ -40,15 +40,15 @@ After testing, run `quality-gate-2` to review the actual code diff:
 - produces `code-review-report.md`
 - verdict: `APPROVE` / `CONDITIONALLY APPROVE` / `REQUEST CHANGES`
 
-The pipeline is complete only after Quality Gate 2.
+The pipeline of sub-agents is complete after Quality Gate 2. The orchestrator then delivers a final summary to the user.
 
 ## Adapting OpenCode Skills to Hermes
 
 This skill is typically built by porting an existing OpenCode harness.
 
-See `references/opencode-skills-inventory.md` for the full list of OpenCode skills available in the user's `Analyst.tar` archive, their port status, and recommended next ports (quality-gate and architect are the biggest gaps).
+See `references/opencode-skills-inventory.md` for the full list of OpenCode skills available in the user's `Analyst.tar` archive, their port status, and recommended next ports.
 
-See `references/venv-and-deployment-planning.md` for the user's explicit preference for project-level Python venv, dependency management, and production deployment planning.
+See `references/quality-gate-vs-quality-gate-2.md` for the distinction between pre-development documentation review (`quality-gate`) and post-implementation code review (`quality-gate-2`), including pipeline placement and verdict vocabularies.
 
 See `references/remindb-artifact-search.md` for the current preferred way to make pipeline artifacts searchable in remindb: use concise `MemoryWrite` summaries (250–500 tokens) and read the source artifact for details. Do not duplicate files into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
 See `references/hermes-cron-script-path-workaround.md` for the exact Hermes cron script-path limitation and the wrapper-file workaround used to deploy `daily_digest.py`.
@@ -250,7 +250,7 @@ toolsets: ["file", "terminal"]
 
 **If any skill was updated during the pipeline:** copy the updated skill from `~/.hermes/skills/` into `AI-harness/skills/`, commit and push with a message like `feat(skills): update <skill-name>`. Also persist a concise summary of the skill change to remindb.
 
-### Step 8: Final summary
+## Final summary
 
 - If the pipeline stopped at the human gate: report that subsequent steps were skipped pending user approval, and ask what the user wants to do next.
 - If the pipeline ran through Developer, Tester, and Quality Gate 2: summarize to the user in Russian:
