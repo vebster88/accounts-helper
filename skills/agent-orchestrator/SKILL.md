@@ -18,19 +18,25 @@ chat / user request
     ↓
 Orchestrator (this skill)
     ↓
-1. Analyst — structures the request into a Business Requirements Document (БФТ/BRD)
+0. Context gathering (optional)
+   ├─ read-spec — if external spec given
+   └─ architect-collector — if codebase given
     ↓
-2. Architect — designs the technical solution
+1. Analyst — BRD
     ↓
-3. System Analyst — derives system requirements and specification
+2. Architect — HLD
     ↓
-4. Quality Gate — reviews the specification for completeness and risks
+3. System Analyst — specification
     ↓
-5. Developer — implements the solution
+4. Quality Gate — docs review
     ↓
-6. Tester — verifies and writes tests
+5. Decompose — implementation plan
     ↓
-7. Quality Gate 2 — code review of implementation
+6. Developer — code
+    ↓
+7. Tester — tests
+    ↓
+8. Quality Gate 2 — code review
 ```
 
 ### Quality Gate 2
@@ -65,6 +71,10 @@ See `references/telegram-plain-text-markdown-stripping.md` for the safe characte
 See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
 MCP tools) to Hermes tools and skills.
+
+See `references/opencode-mcp-replacement-guide.md` for concrete substitutions
+when an OpenCode skill depends on Confluence, Jira, Swagger, Oracle, or GitLab
+MCP tools that are not available in Hermes.
 
 See `references/pipeline-example-weather-multi-city.md` for the concrete end-to-end
 run that produced the multi-city `weather_daily.py` implementation.
@@ -214,23 +224,33 @@ toolsets: ["file", "terminal"]
 3. **Human Gate rule (hard stop):** The orchestrator MUST present the BRD/HLD/spec and the quality-gate findings to the user and explicitly ask for approval before proceeding. If the user does **not** approve (or asks to stop/fix/rework), the pipeline ends here. Do NOT call the Developer or Tester sub-agents without confirmed human gate approval.
 4. Human gate must also be checked if the quality-gate verdict is `FAIL` or if there are unresolved critical findings. In those cases, stop and ask the user whether to fix the artifacts first or proceed at their own risk.
 
-### Step 5: Developer (only after human gate approval)
+### Step 5: Decompose (only after human gate approval of the spec)
 
-Delegate to the `developer` skill with the approved specification.
+Run the `decompose` skill with the approved specification.
 
 ```text
-goal: "Act as a developer. Implement the solution described in the specification. Write code, tests, setup instructions (venv, dependencies, deployment), and update documentation. Prefer small, testable changes."
-context: "Specification: <...>"
-toolsets: ["file", "terminal", "code_exec"]
+goal: "Decompose the approved specification into vibecode, controlled, and verified work units. Produce docs/decomposition-plan.md and docs/PROGRESS.md. Confirm the plan with the user before implementation."
+context: "Specification: <...>, project path: <...>, existing codebase structure if known."
+toolsets: ["file", "terminal"]
 ```
+
+**After the decompose sub-agent returns:**
+1. Copy `docs/decomposition-plan.md` and `docs/PROGRESS.md` into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(plan): <project> decomposition and progress`.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the decomposition (250-500 tokens) including file paths, work unit count by category, verification levels, and top dependencies.
+
+**Human Gate after Decompose:** The orchestrator MUST present the decomposition plan and PROGRESS.md to the user and ask for approval before the Developer starts. If the user rejects or asks to change the plan, stop and rework.
+
+### Step 6: Developer (only after decomposition approval)
+
+Run the `developer` skill with the approved specification and decomposition plan.
 
 **After the developer sub-agent returns:**
 1. Copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
 2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the implementation (250-500 tokens) including changed files, key decisions, test results, exit codes, and any deviations from the specification. For details, read the source files directly.
 
-### Step 6: Tester (only after human gate approval)
+### Step 7: Tester (only after human gate approval)
 
-Delegate to the `tester` skill with the implementation.
+Run the `tester` skill with the implementation.
 
 ```text
 goal: "Act as a tester. Verify the implementation against the specification, write/execute tests, report coverage and defects."
@@ -242,9 +262,9 @@ toolsets: ["file", "terminal", "code_exec"]
 1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
 2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the test report (250-500 tokens) including file path, verdict, executed test cases, coverage, top defects with severity, and recommendations. For details, read the test report directly.
 
-### Step 7: Quality Gate 2 — Code Review (only after tester returns)
+### Step 8: Quality Gate 2 — Code Review (only after tester returns)
 
-Delegate to the `quality-gate-2` skill with the implementation diff and test report.
+Run the `quality-gate-2` skill with the implementation diff and test report.
 
 ```text
 goal: "Act as a code reviewer. Review the implementation diff for bugs, security, performance, error handling, and test coverage. Save code-review-report.md and report verdict."
