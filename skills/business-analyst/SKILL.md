@@ -136,7 +136,9 @@ flowchart TD
 
 ### Step 4: DoR verification
 
-Check mandatory criteria:
+Check mandatory and if-applicable criteria. Criteria are split into 5 groups: completeness, artifacts, consistency, NFR/BR, and if-applicable. Each criterion is marked «обязательный» (mandatory — blocks work) or «при наличии» (if applicable — does not block, but records gaps).
+
+#### Group A: Completeness (Полнота запроса)
 
 | # | Criterion | Level |
 |---|---|---|
@@ -147,18 +149,54 @@ Check mandatory criteria:
 | D5 | CJM/BPMN present | mandatory |
 | D6 | Stakeholders / departments listed | mandatory |
 | D7 | Systems / services identified | mandatory |
-| D12 | Consumption NFR stated | mandatory |
-| D13 | Performance / load NFR stated | mandatory |
-| D14 | At least one BR exists | mandatory |
 
-Report:
+#### Group B: Artifacts (Артефакты)
+
+| # | Criterion | Level |
+|---|---|---|
+| D8 | Related Jira / tasks / blockers read | if applicable |
+| D9 | Related Confluence / spec links checked | if applicable |
+| D10 | Local / remindb context reused | mandatory |
+
+#### Group C: Consistency (Непротиворечивость)
+
+| # | Criterion | Level |
+|---|---|---|
+| D11 | No internal contradictions | mandatory |
+| D12 | No contradictions with regulatory requirements | mandatory |
+
+#### Group D: NFR and BR
+
+| # | Criterion | Level |
+|---|---|---|
+| D13 | Consumption NFR stated | mandatory |
+| D14 | Performance / load NFR stated | mandatory |
+| D15 | At least one BR exists | mandatory |
+| D16 | No blocking open questions without answers | mandatory |
+
+#### Group E: If applicable (При наличии — does not block)
+
+| # | Criterion | Level |
+|---|---|---|
+| D17 | PFC / Epic / Jira reference | if applicable |
+| D18 | HLD / architectural context link | if applicable |
+
+#### DoR verdict
+
+| Verdict | Condition | Action |
+|---|---|---|
+| **ГОТОВ** | All mandatory PASS + all if-applicable PASS or N/A | → Step 5 (Fill requirements) |
+| **УСЛОВНО ГОТОВ** | All mandatory PASS, any if-applicable FAIL | → Step 5 with Open Questions for failed if-applicable items |
+| **НЕ ГОТОВ** | Any mandatory FAIL | → Elicitation / ask user |
+
+**Report:**
 ```
-DoR: X/Y обязательных пройдено → ГОТОВ / УСЛОВНО ГОТОВ / НЕ ГОТОВ
+DoR: X/Y обязательных пройдено, Z/W при наличии пройдено → ГОТОВ / УСЛОВНО ГОТОВ / НЕ ГОТОВ
 ```
 
 If **НЕ ГОТОВ**, present only genuinely blocking questions to the user.
 
-### Step 5: Fill requirements
+### Step 5: Fill Business Requirements + Rules + Regulations
 
 Sections in Russian:
 - `## Нормативные требования (REG-NN)`
@@ -199,7 +237,7 @@ Requirement codes must match `^[A-Z]+-\d{2}$` (e.g. `BR-01`, `NFR-01`).
 
 Report:
 ```
-DoD: X/10
+DoD: X/9
 ```
 
 ### Step 8: Finalize
