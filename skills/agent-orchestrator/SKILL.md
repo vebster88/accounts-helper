@@ -34,7 +34,9 @@ Orchestrator (this skill)
     ↓
 6. Developer — code
     ↓
-7. Tester — tests
+7. Tester — unit/integration tests
+    ↓
+7.5. E2E Test — end-to-end scenarios
     ↓
 8. Quality Gate 2 — code review
 ```
@@ -262,13 +264,29 @@ toolsets: ["file", "terminal", "code_exec"]
 1. Copy the test report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(test): <project> test report`.
 2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the test report (250-500 tokens) including file path, verdict, executed test cases, coverage, top defects with severity, and recommendations. For details, read the test report directly.
 
-### Step 8: Quality Gate 2 — Code Review (only after tester returns)
+### Step 7.5: E2E Test (after tester returns, before code review)
 
-Run the `quality-gate-2` skill with the implementation diff and test report.
+Run the `e2e-test` skill with the implementation and test report.
+
+```text
+goal: "Run end-to-end tests for the implementation. Start the service/script, run scenarios, check responses/logs, stop service, save e2e-report.md."
+context: "Implementation: <...>\nSpecification: <...>\nTest report: <...>\nProject path: <...>"
+toolsets: ["file", "terminal"]
+```
+
+**After the e2e-test sub-agent returns:**
+1. Copy the e2e report into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(e2e): <project> e2e report`.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the e2e report (250-500 tokens) including file path, scenarios count, passed/failed/skipped, top failures, and environment notes. For details, read the e2e report directly.
+
+**Human Gate rule:** If e2e tests reveal critical failures, stop and ask the user whether to fix before Quality Gate 2.
+
+### Step 8: Quality Gate 2 — Code Review (only after e2e returns)
+
+Run the `quality-gate-2` skill with the implementation diff, test report, and e2e report.
 
 ```text
 goal: "Act as a code reviewer. Review the implementation diff for bugs, security, performance, error handling, and test coverage. Save code-review-report.md and report verdict."
-context: "Project: <...>, workdir: <...>, test report: <...>, last commit / branch diff."
+context: "Project: <...>, workdir: <...>, test report: <...>, e2e report: <...>, last commit / branch diff."
 toolsets: ["file", "terminal"]
 ```
 
@@ -306,3 +324,10 @@ toolsets: ["file", "terminal"]
 - The developer sub-agent must ask for approval before running tests that modify state or use external services.
 - Each sub-agent must fit its output within the available context window; use summaries when artifacts are large.
 - **GitHub sync rule:** project artifacts, skills, and agent definitions live in the user's GitHub repository (`AI-harness`). Push only `agents/`, `skills/`, `projects/`, `scripts/`, `docs/`; exclude archives, credentials, logs, caches, OS/IDE files. After editing skills in `~/.hermes/skills/`, copy changes back to the repo and commit/push. After pulling updates, copy `skills/` into `~/.hermes/skills/` to activate them.
+
+**Pitfall — new skill directories:** When copying a newly created skill from `~/.hermes/skills/` to `AI-harness/skills/`, the target directory may not exist. Always create it first:
+```bash
+mkdir -p /home/hermes_ai/my_agent/AI-harness/skills/<name>
+cp /home/hermes_ai/.hermes/skills/<name>/SKILL.md /home/hermes_ai/my_agent/AI-harness/skills/<name>/SKILL.md
+```
+Copying directly without `mkdir -p` fails with "No such file or directory". Also copy any `references/` or `templates/` files under the same directory.
