@@ -100,15 +100,22 @@ Sections in Russian:
 - `## Бизнес-правила (BRULE-NN)`
 - `## Нефункциональные требования (NFR-NN)` — availability, security, reliability, performance
 
+**Development and deployment context:** Explicitly capture in a dedicated section or within NFRs:
+- Target Python version and whether a project-level `venv` is required.
+- Whether the solution must be stdlib-only or may use dependencies (and how they will be managed via `requirements.txt` / `pyproject.toml`).
+- Expected deployment environment (server, cron, systemd, container, etc.).
+- Any OS/runtime constraints that affect portability.
+If the user did not specify these, flag them as open questions or propose sensible defaults.
 Requirement codes must match `^[A-Z]+-\d{2}$` (e.g. `BR-01`, `NFR-01`).
 
 **Traceability preparation:** For every BR and BRULE, include a stable identifier and concise description so that the System Analyst can map them to FR/SR in the traceability matrix. Avoid vague or overlapping requirements.
 
 ### Step 6: Risks + prerequisites
 
-- `## Риски (R-NN)`
+- `## Риски (R-NN)` — include deployment/runtime risks (e.g., missing venv, Python version mismatch, dependency conflicts).
 - `## Заинтересованные стороны и зависимости`
-- `## Предпосылки для системных требований`
+- `## Предпосылки для системных требований` — include: Python version, venv creation, dependency management, deployment target.
+- `## Среда разработки и развёртывания` — capture: local dev setup, CI/CD, target host, scheduler, environment isolation.
 
 ### Step 7: DoD verification
 
@@ -134,7 +141,7 @@ DoD: X/10
 - Update `status: review` in frontmatter.
 - Save file.
 - Provide summary to orchestrator / user in Russian, including the list of BR/BRULE/NFR identifiers. These identifiers will be used by the System Analyst to build the traceability matrix.
-- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the BRD (250-500 tokens). Include file path, goal, user story, key BR/BRULE/NFR identifiers with priorities, and main risks. For detailed questions, read the BRD file directly rather than duplicating its full text.
+- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the BRD (250-500 tokens / ~600-1250 characters). Include file path, goal, user story, key BR/BRULE/NFR identifiers with priorities, and main risks. For detailed questions, read the BRD file directly rather than duplicating its full text. See `agent-orchestrator/references/remindb-artifact-search.md`.
 
 ## Anti-patterns
 
@@ -142,7 +149,7 @@ DoD: X/10
 - Do NOT skip DoR verification.
 - Do NOT create BRD in English unless explicitly asked.
 - Do NOT use verbal requirement codes like `BR-DEL` or `NFR-AVAIL`.
-- Do NOT copy the BRD file into `~/.hermes/memories/` or create symlinks there for indexing. remindb's source root is restricted and symlinks are ignored. Use `MemoryWrite` summaries instead.
+- Do NOT copy the BRD file into `~/.hermes/memories/` or create symlinks there for indexing. remindb's source root is restricted and symlinks are ignored. Use concise `MemoryWrite` summaries (250-500 tokens) and read the source file for details.
 
 ## Output
 

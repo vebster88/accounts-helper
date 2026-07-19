@@ -33,13 +33,18 @@ Orchestrator (this skill)
 
 ## Adapting OpenCode Skills to Hermes
 
-This skill is typically built by porting an existing OpenCode harness. See
-See `references/remindb-semantic-search-workaround.md` for the preferred way to make project artifacts searchable in remindb without duplicating files outside the source root.
+This skill is typically built by porting an existing OpenCode harness.
+
+See `references/remindb-artifact-search.md` for the current preferred way to make pipeline artifacts searchable in remindb: use concise `MemoryWrite` summaries (250–500 tokens) and read the source artifact for details. Do not duplicate files into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
 
 See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
-permission blocks) to Hermes equivalents (`delegate_task`, `Memory*`,
-Linux paths, toolsets).
+See `references/pipeline-example-weather-multi-city.md` for the concrete end-to-end
+run that produced the multi-city `weather_daily.py` implementation.
+
+See `references/pipeline-example-usd-rub-rate.md` for the concrete end-to-end
+run that produced the `usd_rub_rate.py` implementation, including the remindb
+memory-strategy correction and the human-gate fix after the BA stage.
 
 See `references/opencode-to-hermes-harness-port.md` for the concrete
 end-to-end port of the `Analyst` harness, including the sequential-pipeline
@@ -97,7 +102,7 @@ toolsets: ["file", "terminal", "code_exec"]
 **After each sub-agent returns:**
 1. If it produced a new or updated artifact, copy it into `AI-harness/projects/<project-name>/` (creating the folder if needed).
 2. Commit and push to GitHub with a descriptive message (e.g., `feat(brd): <project> business requirements`).
-3. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the artifact (250-500 tokens) including the file path, stage, key decisions/requirements, identifiers, and any unresolved findings. For detailed questions, read the source artifact directly. Do NOT duplicate the artifact file into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
+- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the artifact (250-500 tokens / ~600-1250 characters) including the file path, stage, key decisions/requirements, identifiers, and any unresolved findings. For detailed questions, read the source artifact directly. Do NOT duplicate the artifact file into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed. See `references/remindb-artifact-search.md`.
 4. Optionally run `MemorySearch` with a representative query to verify the summary is retrievable.
 
 **Human Gate after Analyst (hard stop):** If the BRD DoD is not 10/10 (i.e., DD8 human gate is pending) or there are blocking open questions, the orchestrator MUST stop and ask the user for approval before proceeding to the Architect. Do NOT proceed automatically.
@@ -107,14 +112,14 @@ toolsets: ["file", "terminal", "code_exec"]
 Delegate to the `architect` skill with the BRD.
 
 ```text
-goal: "Act as a software architect. Read the provided BRD and produce a high-level design: components, interfaces, data model, technology choices, integration points, risks."
+goal: "Act as a software architect. Read the provided BRD and produce a high-level design: components, interfaces, data model, technology choices, integration points, deployment and environment strategy (venv, runtime, prod deployment)."
 context: "BRD from previous step: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
 **After the architect sub-agent returns:**
 1. Copy the produced HLD into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(hld): <project> high-level design`.
-2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the HLD (250-500 tokens) including file path, architectural components, source selection, API contracts, cache strategy, CLI flags, and any unresolved findings. For details, read the HLD file directly.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the HLD (250-500 tokens) including file path, architectural components, source selection, API contracts, cache strategy, CLI flags, deployment/environment notes, and any unresolved findings. For details, read the HLD file directly.
 
 **Human Gate after Architect:** If the HLD contains unresolved critical findings, unresolved open questions inherited from the BRD, or the user has not yet approved the previous BRD human gate, the orchestrator MUST stop and ask the user before proceeding to the System Analyst.
 
@@ -123,14 +128,14 @@ toolsets: ["file", "terminal", "code_exec"]
 Delegate to the `system-analyst` skill with BRD + HLD.
 
 ```text
-goal: "Act as a system analyst. Read the BRD and HLD and produce a detailed specification: functional requirements (FR-NN), system requirements (SR-NN), API contracts, data-model details, acceptance criteria."
+goal: "Act as a system analyst. Read the BRD and HLD and produce a detailed specification: functional requirements (FR-NN), system requirements (SR-NN), API contracts, data-model details, deployment/environment requirements, acceptance criteria."
 context: "BRD: <...>\nHLD: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
 **After the system analyst sub-agent returns:**
 1. Copy the produced specification into `AI-harness/projects/<project-name>/`, commit and push with a message like `feat(spec): <project> specification`.
-2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens) including file path, key FR/SR identifiers, CLI reference and conflicts, cache TTL rule, and traceability matrix summary. For details, read the spec file directly.
+2. **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens) including file path, key FR/SR identifiers, CLI reference and conflicts, deployment/environment requirements, cache TTL rule, and traceability matrix summary. For details, read the spec file directly.
 
 **Human Gate after System Analyst:** If the specification contains unresolved critical findings, unresolved open questions, or traceability gaps that block implementation, the orchestrator MUST stop and ask the user before proceeding to the Quality Gate.
 
@@ -139,7 +144,7 @@ toolsets: ["file", "terminal", "code_exec"]
 Delegate to the `quality-gate` skill with the full specification.
 
 ```text
-goal: "Act as a quality gate. Review the BRD, HLD, and specification against the checklist: completeness, consistency, traceability, NFR coverage, security, risks, human gate (DD8). Report a pass/fail verdict with findings."
+goal: "Act as a quality gate. Review the BRD, HLD, and specification against the checklist: completeness, consistency, traceability, NFR coverage, security, deployment/environment, human gate (DD8). Report a pass/fail verdict with findings."
 context: "Full package: <...>"
 toolsets: ["file", "terminal"]
 ```
@@ -155,7 +160,7 @@ toolsets: ["file", "terminal"]
 Delegate to the `developer` skill with the approved specification.
 
 ```text
-goal: "Act as a developer. Implement the solution described in the specification. Write code, tests, and update documentation. Prefer small, testable changes."
+goal: "Act as a developer. Implement the solution described in the specification. Write code, tests, setup instructions (venv, dependencies, deployment), and update documentation. Prefer small, testable changes."
 context: "Specification: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
@@ -193,7 +198,7 @@ toolsets: ["file", "terminal", "code_exec"]
 ## Memory and Context
 
 - Before delegating, search remindb for relevant context: `MemorySearch` with keywords from the request.
-- After each delegation, consider persisting key artifacts with `MemoryWrite` if they are likely to be reused.
+- After each sub-agent returns, persist a concise summary via `MemoryWrite` (see `references/remindb-artifact-search.md`). Read the source artifact directly when the user asks for details.
 
 ## Output Language
 

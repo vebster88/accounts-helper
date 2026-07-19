@@ -53,6 +53,7 @@ Technical requirements covering:
 - Performance, timeouts, caching
 - Security and validation
 - CLI/input contracts
+- **Environment and deployment:** Python version, venv setup, dependency management (`requirements.txt`/`pyproject.toml`), deployment target (server/cron/systemd/container), OS/runtime constraints, environment isolation.
 
 ### Step 4: API contracts
 
@@ -91,18 +92,56 @@ Include all BRs, BRULEs, NFRs, and user stories. Test Case column may contain pl
 - Save spec to `<project>/spec.md`.
 - Include DoD check for the spec itself: all BRs traced, all FRs have acceptance criteria, matrix is complete.
 - Provide summary to orchestrator in Russian.
-- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens). Include file path, key FR/SR identifiers, CLI flags and conflicts, cache behavior, and traceability matrix summary. For detailed questions, read the spec file directly rather than duplicating its full text.
+- **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the specification (250-500 tokens / ~600-1250 characters). Include file path, key FR/SR identifiers, CLI flags and conflicts, cache behavior, and traceability matrix summary. For detailed questions, read the spec file directly rather than duplicating its full text. See `agent-orchestrator/references/remindb-artifact-search.md`.
 
 ## Output Language
 
 - Russian for user-facing content.
 - Requirement codes (BR-NN, FR-NN, SR-NN, AC-NN, TC-NN) remain Latin.
 
+## Maintaining an Existing Specification
+
+When the user asks to update an existing spec — especially changing a primary data source, API endpoint, or response format — treat it as a consistency pass across the whole document, not a single-line edit.
+
+### Workflow
+
+1. **Read the full context** in parallel: `brd.md`, `hld.md`, `spec.md` (and any related implementation or test files if they exist).
+2. **Identify every place the old source is referenced**: URL, endpoint path, field names, response examples, encoding notes, parsing logic, fallback triggers.
+3. **Update the primary FR** that defines the source. Include new extraction/parsing rules (e.g., XML vs JSON, charset, element path, attribute path, decimal-separator normalization).
+4. **Update the API contract section** with the new endpoint, request headers, full example response, field table, fallback/error triggers, and encoding quirks.
+5. **Cascade the change to dependent sections**:
+   - Output formatting and timezone handling
+   - Error matrix (parsing errors, missing-field errors)
+   - Cache schema and timestamp semantics
+   - CLI help/examples if source-specific
+   - Acceptance criteria
+   - Risks and mitigations
+   - Traceability matrix
+6. **Search for stale references** using the old URL, old domain, or old field names. Remove or update every hit.
+7. **Verify** by reading the modified FR, API contract, output examples, error matrix, and traceability matrix; search again to confirm zero stale references.
+
+### Quick Checklist
+
+- [ ] Primary FR references the new source URL and format
+- [ ] Parsing rules (XML/JSON, charset, element/attribute path, decimal separator) documented
+- [ ] API contract has a real example response in the new format
+- [ ] Field table uses new field/attribute names
+- [ ] Fallback triggers match the new contract
+- [ ] Output examples updated for new date/time semantics
+- [ ] Error matrix reflects new parsing errors (e.g., `invalid XML`, missing `Valute`)
+- [ ] Cache schema updated if timestamp format changed
+- [ ] Acceptance criteria updated
+- [ ] Risks updated
+- [ ] Traceability matrix updated
+- [ ] Zero stale references to old URL/fields remain
+
 ## Anti-patterns
 
 - Do NOT introduce new business rules not present in BRD.
 - Do NOT skip the traceability matrix.
 - Do NOT use verbal requirement codes.
+- Do NOT leave stale references to an old API endpoint, URL, or field name after changing the primary data source. Search and update the FR, contract, examples, error matrix, cache schema, AC, risks, and traceability matrix.
+- Do NOT copy the spec or related files into `~/.hermes/memories/` or create symlinks there for indexing. remindb's source root is restricted and symlinks are ignored. Use concise `MemoryWrite` summaries (250-500 tokens) and read the source file for details.
 
 ## Integration
 
