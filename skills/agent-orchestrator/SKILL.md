@@ -46,6 +46,8 @@ The pipeline of sub-agents is complete after Quality Gate 2. The orchestrator th
 
 This skill is typically built by porting an existing OpenCode harness.
 
+See `references/opencode-vs-hermes-skill-porting.md` for the practical mapping decisions made while porting the user's `Analyst` archive into Hermes skills, including dead-code finding pitfall, DoR placement, verdict vocabulary, and output path differences.
+
 See `references/opencode-skills-inventory.md` for the full list of OpenCode skills available in the user's `Analyst.tar` archive, their port status, and recommended next ports.
 
 See `references/quality-gate-vs-quality-gate-2.md` for the distinction between pre-development documentation review (`quality-gate`) and post-implementation code review (`quality-gate-2`), including pipeline placement and verdict vocabularies.
@@ -141,7 +143,7 @@ Record in this session:
 
 ### Step 1: Analyst
 
-Delegate to the `business-analyst` skill with the request.
+Run the `business-analyst` skill with the request.
 
 ```text
 goal: "Act as a business analyst. Read the attached user request and produce a concise Business Requirements Document (БФТ) in Russian. Include: goal, AS-IS/TO-BE, user story, CJM (Mermaid), business requirements (BR-NN), business rules (BRULE-NN), non-functional requirements (NFR-NN), risks, DoR/DoD verdict."
@@ -149,7 +151,14 @@ context: "User request: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
-**After each sub-agent returns:**
+**Before the analyst step, if the user provided an external spec or codebase:**
+
+1. If a spec URL/path is provided → run `read-spec` first. Save `source-spec.md` and `source-spec-analysis.md`.
+2. If a codebase path is provided → run `architect-collector` first. Save `architect-collector-summary.md`.
+3. Feed the collected context into the analyst as `context`.
+4. Persist both collector summaries to remindb via `MemoryWrite`.
+
+**After the analyst sub-agent returns:**
 1. If it produced a new or updated artifact, copy it into `AI-harness/projects/<project-name>/` (creating the folder if needed).
 2. Commit and push to GitHub with a descriptive message (e.g., `feat(brd): <project> business requirements`).
 - **Persist to memory:** Call `MemoryWrite` with a concise Russian summary of the artifact (250-500 tokens / ~600-1250 characters) including the file path, stage, key decisions/requirements, identifiers, and any unresolved findings. For detailed questions, read the source artifact directly. Do NOT duplicate the artifact file into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed. See `references/remindb-artifact-search.md`.
@@ -159,11 +168,11 @@ toolsets: ["file", "terminal", "code_exec"]
 
 ### Step 2: Architect (only after BA human gate approval)
 
-Delegate to the `architect` skill with the BRD.
+Run the `architect` skill with the BRD and the collector summaries (if any).
 
 ```text
 goal: "Act as a software architect. Read the provided BRD and produce a high-level design: components, interfaces, data model, technology choices, integration points, deployment and environment strategy (venv, runtime, prod deployment)."
-context: "BRD from previous step: <...>"
+context: "BRD from previous step: <...>\nCollector summaries: <...>"
 toolsets: ["file", "terminal", "code_exec"]
 ```
 
