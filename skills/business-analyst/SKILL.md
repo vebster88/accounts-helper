@@ -14,18 +14,48 @@ Transform a raw business request into a structured BRD (БФТ). Verify readines
 ## When to Use
 
 - User asks for "бизнес-анализ", "BRD", "БФТ", "собери требования".
+- User provides a URL to an existing ТЗ/SRS/specification and asks to "посмотри как бизнес-аналитик", "разбери ТЗ", "составь BRD из ТЗ".
 - Called by `agent-orchestrator` as the first step of the development pipeline.
+
+## Modes
+
+### Mode 1: Greenfield BRD from a raw business request
+
+Use the standard workflow below. Ask for context if needed, then create BRD from scratch.
+
+### Mode 2: Reverse BA from an external specification
+
+When user provides an existing specification (local file or URL, e.g. GitHub `TS.md`):
+
+1. Download/read the source document.
+2. Create a copy of the source in the project directory for traceability (`source_ts.md` or similar).
+3. Extract the **business layer** only:
+   - product goal and problem statement,
+   - AS-IS state (what is already implemented ✅ / partial ⚠️ / not implemented ❌),
+   - TO-BE desired state (roadmap, scope, frozen items),
+   - business value / metrics,
+   - scope in/out,
+   - stakeholders,
+   - glossary / domain terms,
+   - core user stories (3–7),
+   - business requirements (BR-NN), business rules (BRULE-NN), non-functional requirements (NFR-NN),
+   - risks (R-NN).
+4. Do NOT copy implementation details (code paths, endpoints, file names) into BR as requirements unless they are genuine business constraints.
+5. Treat implementation-heavy sections as AS-IS context; convert them into business language where possible.
+6. Flag unclear scope, contradictions, or missing business owner decisions as open questions.
+7. Run DoR/DoD and stop after BA — do not proceed to Architect/Developer unless explicitly asked.
+8. When the user later answers open questions, update the BRD to close them and adjust DoD accordingly.
 
 ## Input
 
-- Jira key, Confluence link, or raw text describing the business need.
+- Jira key, Confluence link, GitHub URL, or raw text describing the business need / existing specification.
 - Project workdir where the BRD will be saved.
 
 ## Lookup Order
 
 1. **remindb** — `MemorySearch`, `MemoryFetch`, `MemoryRelated`
 2. Local files in the project
-3. User-provided documents / screenshots
+3. User-provided documents / screenshots / URLs
 
 Do NOT invent business rules. If context is missing, flag as Open Question.
 
@@ -34,7 +64,43 @@ Do NOT invent business rules. If context is missing, flag as Open Question.
 ### Step 0: Load input
 
 - Ask the user if they did not provide enough context.
+- If user provides a URL to an existing spec/TS/design doc, download it and treat it as source material (not as a final BRD). Extract business intent, current state, and gaps from it.
 - Search remindb for existing related BRD/ТЗ: `MemorySearch(query="<domain> БФТ BRD требование")`.
+
+### Step 0.5: Input Gate / Pre-DoR
+
+Before creating the BRD skeleton, verify that the minimum input needed for analysis is available. If any mandatory criterion is missing, stop and ask the user for the missing information. Do NOT proceed to Step 1 until the input gate is satisfied.
+
+| # | Criterion | Mandatory |
+|---|---|---|
+| I1 | Business request or source specification is provided | yes |
+| I2 | Project workdir for saving artifacts is known | yes |
+| I3 | Business customer or domain owner is identifiable | yes |
+| I4 | Problem/goal is at least partially stated | yes |
+| I5 | Access to source systems (Jira/Confluence/GitHub) is confirmed | if applicable |
+
+Report:
+```
+Input Gate: X/Y mandatory criteria satisfied → PASS / BLOCKED
+```
+
+If **BLOCKED**, present only the missing mandatory items to the user and wait for answers. Do not start drafting the BRD.
+
+### Step 0a: Analyze external specification (optional)
+
+When the user asks to analyze an external ТЗ/SRS/specification (e.g., from a GitHub URL) and produce a BRD:
+
+1. Download the source document.
+2. Identify:
+   - Product goal and problem statement
+   - AS-IS architecture/implementation state
+   - TO-BE desired state (if stated) or infer from roadmap/open items
+   - Scope (implemented ✅, partial ⚠️, frozen ❌)
+   - Stakeholders and business context
+   - Glossary/domain terms
+3. Do NOT accept the spec as a BRD directly — reframe it from a business-requirements perspective.
+4. Flag implementation details that are not yet requirements as assumptions or open questions.
+5. Create a fresh BRD based on the extracted business layer.
 
 ### Step 1: Create BRD file
 
@@ -154,6 +220,7 @@ DoD: X/10
 ## Output
 
 - Full BRD markdown file.
+- Source specification copy (for reverse-BA mode).
 - DoR/DoD reports.
 - List of open questions with owners.
 
