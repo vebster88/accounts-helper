@@ -35,11 +35,21 @@ Orchestrator (this skill)
 
 This skill is typically built by porting an existing OpenCode harness.
 
+See `references/opencode-skills-inventory.md` for the full list of OpenCode skills available in the user's `Analyst.tar` archive, their port status, and recommended next ports (quality-gate and architect are the biggest gaps).
+
+See `references/venv-and-deployment-planning.md` for the user's explicit preference for project-level Python venv, dependency management, and production deployment planning.
+
 See `references/remindb-artifact-search.md` for the current preferred way to make pipeline artifacts searchable in remindb: use concise `MemoryWrite` summaries (250–500 tokens) and read the source artifact for details. Do not duplicate files into `~/.hermes/memories/`; remindb's source root is restricted and symlinks are not indexed.
+See `references/hermes-cron-script-path-workaround.md` for the exact Hermes cron script-path limitation and the wrapper-file workaround used to deploy `daily_digest.py`.
+
+See `references/pipeline-example-daily-telegram-digest.md` for the concrete end-to-end
+run that combined `weather_daily.py` and `usd_rub_rate.py` into a single cron job, including the Hermes cron path workaround and the plain-text Markdown stripping pitfall.
+
+See `references/telegram-plain-text-markdown-stripping.md` for the safe character set when stripping Markdown formatting from child-script output that will be delivered as Telegram plain text.
 
 See `references/opencode-to-hermes-adaptation.md` for the generic mapping of
 OpenCode concepts (`agents/*.md`, `remindb_Memory*`, Windows paths,
-See `references/pipeline-example-weather-multi-city.md` for the concrete end-to-end
+MCP tools) to Hermes tools and skills.
 run that produced the multi-city `weather_daily.py` implementation.
 
 See `references/pipeline-example-usd-rub-rate.md` for the concrete end-to-end
@@ -74,11 +84,26 @@ A natural but wrong design is: analyst → delegates to architect → delegates 
 
 **Correct pattern:** the orchestrator holds the full pipeline state. After each `delegate_task` returns, the orchestrator reads the produced artifact and calls the next `delegate_task` with that artifact in the context. Sub-agents are leaf workers only.
 
+### Deployment / cron pitfall: Hermes script path
+
+When the final artifact is a script that must be scheduled with `hermes cron create --script`, the orchestrator must verify the script placement **before** telling the user deployment is complete. Hermes cron accepts only a bare filename of a real file located directly in `~/.hermes/scripts/`; symlinks resolving outside that directory and absolute paths are rejected. The correct pattern is:
+
+1. Master copy in `AI-harness/scripts/<name>.py`.
+2. Real (not symlinked) wrapper file in `~/.hermes/scripts/<name>_wrapper.sh` that `exec`s the master copy.
+3. Cron command uses `--script "<name>_wrapper.sh"`.
+
+See `references/hermes-cron-script-path-workaround.md`.
+
+### Plain-text Telegram pitfall: Markdown stripping
+
+If the cron job delivers child-script output as plain text, strip only the Markdown formatting characters from that child output. Do not strip dots, dashes, spaces, braces, exclamation marks, or pipe — those are safe in plain text and removing them corrupts numbers, dates, city names, and readability. See `references/telegram-plain-text-markdown-stripping.md`.
+
 ## When to Use
 
 - User says: "запусти harness", "разработай через агентов", "orchestrator", "пайплайн разработки".
 - Complex task that benefits from decomposition into analysis → architecture → requirements → implementation → testing.
 - Porting an existing OpenCode agent harness into Hermes.
+- A wrapper script must be scheduled by `hermes cron`.
 
 ## Workflow
 
@@ -141,11 +166,11 @@ toolsets: ["file", "terminal", "code_exec"]
 
 ### Step 4: Quality Gate (only after SA human gate approval)
 
-Delegate to the `quality-gate` skill with the full specification.
+Delegate to the `quality-gate` skill with the full package.
 
 ```text
-goal: "Act as a quality gate. Review the BRD, HLD, and specification against the checklist: completeness, consistency, traceability, NFR coverage, security, deployment/environment, human gate (DD8). Report a pass/fail verdict with findings."
-context: "Full package: <...>"
+goal: "Act as a quality gate. Review the BRD, HLD, and specification at paths <brd>, <hld>, <spec> for project <project>. Save review to <workdir>/projects/<project>/review.md. Report verdict (READY / CONDITIONALLY READY / NOT READY) and top findings."
+context: "Full package: BRD=<...>, HLD=<...>, Spec=<...>, project=<...>, workdir=<...>"
 toolsets: ["file", "terminal"]
 ```
 
