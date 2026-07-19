@@ -19,8 +19,9 @@ Find gaps in requirements and design documents before development starts. Review
 
 ### Pipeline mode
 
-- Called by `agent-orchestrator` as step 4 of the development pipeline.
+- Called by `agent-orchestrator` as step 4 of the development pipeline (before Developer).
 - Input: BRD + HLD + Spec package.
+- A second, separate `quality-gate-2` skill is called by the orchestrator after Tester for post-implementation code review. Do not confuse the two gates.
 
 ### Standalone mode
 
@@ -59,10 +60,11 @@ Always produce a markdown review file with:
 When user asks to review an existing document:
 
 1. Read all provided file paths.
-2. Identify artifact type (BRD, HLD, spec, code review, or mixed package).
-3. Run the relevant checklist sections from this skill.
-4. Write `review.md` next to the reviewed files or in the project directory.
-5. Return verdict and top findings.
+2. If the package is an external / third-party documentation set (e.g., open-source TS.md + API.md + DATABASE.md + DEPLOY.md), see `references/external-doc-package-review.md` for additional cross-document consistency hotspots.
+3. Identify artifact type (BRD, HLD, spec, code review, or mixed package).
+4. Run the relevant checklist sections from this skill.
+5. Write `review.md` next to the reviewed files or in the project directory.
+6. Return verdict and top findings.
 
 ### Pipeline review
 
@@ -166,12 +168,19 @@ Verify:
 
 ### Step 4: Implicit artifacts and open questions
 
-For every external system, module, file, config, or process mentioned but not documented, list:
+For every external system, module, file, config, process, or hidden assumption mentioned but not documented, list:
 
-| Object | Artifact Type | Commonly Understood? | What to request |
-|--------|---------------|----------------------|----------------|
+| Object / Assumption | Type | Commonly Understood? | Where to verify | Risk if missing |
+|---|---|---|---|---|
 
-Record unresolved open questions that block development.
+Supported artifact types: `external API`, `internal service`, `database`, `queue/topic`, `file/config`, `secret/credential`, `environment/runtime`, `script/binary`, `process/procedure`, `assumption`.
+
+For each row:
+- **Commonly Understood?** = `yes` only if the object is standard and its contract is well-known to the team (e.g., `os.path.join`, `python3`). Otherwise `no`.
+- **Where to verify** = BRD section, HLD section, Spec section, `remindb` node, external link, or `requires clarification`.
+- **Risk if missing** = one-sentence description of what breaks if the object/assumption is not properly specified.
+
+Also record unresolved open questions that block development.
 
 ### Step 5: Score and verdict
 
@@ -212,7 +221,10 @@ Structure:
 
 ## Checklist Results
 
-## Implicit Artifacts / Open Questions
+## Implicit Artifacts / Assumptions / Open Questions
+
+| Object / Assumption | Type | Commonly Understood? | Where to verify | Risk if missing |
+|---|---|---|---|---|
 
 ## Remediation Actions
 
@@ -238,13 +250,24 @@ If standalone:
 - Treat every assertion with skepticism.
 - Do not invent requirements or business rules not present in artifacts.
 - Do not modify reviewed artifacts — only report findings.
-- Russian language for findings; structural labels (BR-NN, FR-NN, etc.) in English.
+- Match the output language to the artifacts: if the reviewed documents are in Russian, write the review in Russian by default; if in English, write in English. Use structural labels (BR-NN, FR-NN, etc.) in English regardless of output language.
+- When the user explicitly requests the review in Russian, translate verdicts as `READY / ГОТОВ`, `CONDITIONALLY READY / УСЛОВНО ГОТОВ`, `NOT READY / НЕ ГОТОВ`. See `references/example-russian-review.md`.
+- For third-party/open-source documentation packages (e.g. TS.md + API.md + DATABASE.md + DEPLOY.md + MULTI-CONTROL.md), also check: (a) contradictions between TS and API docs, (b) missing DB tables vs claimed schema, (c) version drift across docs, (d) stale/incomplete translations, (e) missing runtime environment details, (f) platform limitations not propagated to API docs. See `references/external-doc-package-review.md` and `references/review-multimanager-example.md`.
+
+## References
+
+- `references/review-template.md` — standard review report format.
+- `references/hermes-cron-pitfalls.md` — Hermes cron script-path, symlink, and lifecycle gotchas for deployment checks.
+- `references/telegram-plain-text-markdown-stripping.md` — safe Markdown-stripping set when child-script output is delivered as Telegram plain text.
+- `references/external-doc-package-review.md` — how to review a third-party / open-source documentation package against a BRD.
+- `references/example-russian-review.md` — example Russian-language review of an external doc package, including verdict labels and section layout.
+- `references/code-review-vs-quality-gate.md` — distinction between pre-dev `quality-gate` (docs/design) and post-dev `quality-gate-2` (code review), with verdict mapping differences.
 
 ## Tool Usage
 
 - `read_file` — read artifacts.
 - `search_files` — find referenced files or recent specs.
-- `terminal` — check file existence, run lightweight validations (`py_compile`, `grep`).
+- `terminal` — check file existence, run lightweight validations (`py_compile`, `grep`), verify cron setup.
 - `MemoryWrite` — persist review summary if called from orchestrator or standalone long review.
 
 ## Anti-patterns
@@ -253,3 +276,4 @@ If standalone:
 - Do not skip checklist sections because they seem obvious.
 - Do not conflate missing with N/A.
 - Do not suggest fixes that contradict existing requirements without flagging it.
+- Do not approve a deployment section that relies on absolute paths for `hermes cron --script` or uses symlinks that the cron runner rejects.
