@@ -114,3 +114,63 @@ Core запускается как отдельный процесс, управ
 - `gui/src/` (Electron + Vue)
 - `tests/`
 - CI/CD конфиги
+
+## GUI
+
+### Структура
+
+- `gui/src/main/` — Electron main process
+- `gui/src/preload/` — preload bridge
+- `gui/src/renderer/` — Vue 3 frontend
+- `gui/src/shared/` — shared utilities
+
+### Main process
+
+| Файл | Назначение |
+|---|---|
+| `main/index.js` | Entry: BrowserWindow, core launch, IPC, graceful shutdown |
+| `main/core-manager.js` | Fork core process, port/token management |
+| `main/browser-manager.js` | CloakBrowser CLI/binary detection and install |
+| `main/keyboard-hooks.js` | Load native hooks.node, forward keys to Core |
+| `main/tray.js` | System tray menu |
+| `main/updater.js` | electron-updater integration |
+| `main/pty.js` | IPC tail -f / PowerShell log streaming |
+
+### Preload
+
+| Файл | Назначение |
+|---|---|
+| `preload/index.js` | Exposes `window.electronAPI` to renderer |
+
+### Renderer
+
+| Файл | Назначение |
+|---|---|
+| `renderer/main.js` | Vue app init, Pinia, router, i18n |
+| `renderer/App.vue` | Root layout with theme |
+| `renderer/router.js` | 7 routes |
+| `renderer/api/client.js` | Axios with dynamic port/token |
+| `renderer/stores/app.js` | Port/token/theme/language |
+| `renderer/stores/profiles.js` | Profile CRUD |
+| `renderer/stores/browser.js` | Browser start/stop/clean |
+| `renderer/stores/sync.js` | Multi-control sync state |
+| `renderer/stores/automation.js` | Matrix/runs/projects |
+| `renderer/composables/useWebSocket.js` | WS /ws with reconnect |
+| `renderer/views/Profiles.vue` | Main profile table |
+| `renderer/views/Proxies.vue` | Proxy management |
+| `renderer/views/WindowArranger.vue` | Window grid/cascade |
+| `renderer/views/Extensions.vue` | Extension manager |
+| `renderer/views/Settings.vue` | Settings + crypto + automation |
+| `renderer/views/AutomationMatrix.vue` | Project-profile matrix |
+| `renderer/views/AutomationRuns.vue` | Active runs monitor |
+| `renderer/views/AutomationHistory.vue` | Completed runs history |
+| `renderer/components/Layout.vue` | App shell with menu |
+| `renderer/components/BrowserDownload.vue` | CloakBrowser install modal |
+
+## Security observations
+
+- WebSocket `/ws` has no authentication handshake.
+- `/api/settings/recovery-key` returns plaintext recovery key to any authenticated client.
+- Native keyboard hooks require compiled `hooks.node` addon (Windows-only).
+- GUI token is exposed to renderer and can be copied to clipboard.
+
