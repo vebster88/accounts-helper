@@ -76,66 +76,34 @@ Required fields:
 
 ### RD / Spec
 
+Template source: `skills/docgen/templates/spec-template.md`
+
 Output file: `<workdir>/docs/spec/YYYY-MM-DD_<short-title>.md`
 
 Structure:
+1. Constraints
+2. Glossary
+3. Business Rules (BRULE-NN)
+4. Use Cases
+5. Functional Requirements (FR-NN)
+6. System Requirements (SR-NN)
+7. Interface Descriptions
+   7.1 Swimlane
+   7.2 Sequence
+   7.3 API Methods
+   7.4 Error Specification
+   7.5 Kafka Topics
+8. Non-Functional Requirements
+9. Appendix
 
-```markdown
-# Technical Specification: <Title>
+Auto-numbering rules:
+- Business rules: BRULE-01, BRULE-02, ...
+- Functional requirements: FR-01, FR-02, ...
+- System requirements: SR-01, SR-02, ...
+- Non-functional requirements: NFR-01, NFR-02, ...
 
-## 1. Constraints
-
-## 2. Glossary
-
-| Term | Definition |
-|------|------------|
-
-## 3. Business Rules
-
-| ID | Rule | Priority |
-|----|------|----------|
-| BRULE-01 | ... | High |
-
-## 4. Use Cases
-
-## 5. Functional Requirements
-
-| ID | Description | Acceptance Criteria | Priority |
-|----|-------------|---------------------|----------|
-| FR-01 | ... | ... | Must |
-
-## 6. System Requirements
-
-| ID | Description | Related FR |
-|----|-------------|------------|
-| SR-01 | ... | FR-01 |
-
-## 7. Interface Descriptions
-
-### 7.1 Swimlane
-
-### 7.2 Sequence
-
-### 7.3 API Methods
-
-### 7.4 Error Specification
-
-### 7.5 Kafka Topics
-
-## 8. Non-Functional Requirements
-
-### 8.1 Usability
-### 8.2 Performance
-### 8.3 Security
-### 8.4 Switchability
-### 8.5 Scalability
-### 8.6 Reliability
-### 8.7 Availability
-### 8.8 Logging
-### 8.9 Monitoring
-
-## 9. Appendix
-```
+If the user provides items without IDs, assign sequential IDs automatically.
+If the user provides IDs, preserve them and verify there are no gaps.
 
 Required fields:
 | Field | Required |
@@ -162,10 +130,14 @@ Collect required fields from user. If user provides raw notes or transcript — 
 
 ### Step 3: Fill template
 
-- Keep structure intact.
-- Do not remove empty sections; mark as "Не используется" / "Отсутствует" if not applicable.
-- Number requirements sequentially: BRULE-01, FR-01, SR-01, NFR-01.
-- Do not invent content.
+1. Load the template file:
+   - MoM: use built-in structure.
+   - RD/Spec: read `skills/docgen/templates/spec-template.md`.
+2. Replace placeholders with collected data.
+3. Auto-number requirements if IDs are missing.
+4. Keep structure intact.
+5. Do not remove empty sections; mark as "Не используется" / "Отсутствует" if not applicable.
+6. Do not invent content.
 
 ### Step 4: Post-check gate
 
