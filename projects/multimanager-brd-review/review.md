@@ -1,130 +1,130 @@
-# Quality Gate Review — MultiManager Documentation Package
+# Quality Gate Review — Пакет документации MultiManager
 
-**Review date:** 2026-07-19  
-**Scope:** `source_ts.md` (SRS), `brd.md`, API docs (`API.md`, `API.en.md`, `API.zh.md`), DB docs (`DATABASE.md`, `DATABASE.en.md`, `DATABASE.zh.md`), `DEPLOY.md`, `MULTI-CONTROL.md`.  
-**Reviewer:** Quality gate sub-agent  
-**Verdict:** **NOT READY**  
-**Score:** 62 / 100
-
----
-
-## Executive Summary
-
-The documentation package covers most high-level features of MultiManager v2.0.0 and is internally coherent within a single language. However, multiple cross-document contradictions, incomplete database schema coverage, inconsistent multi-language API docs, and missing deployment/environment details make the package unsafe as the single source of truth for implementation or QA. The package must be revised before it can be considered READY.
+**Дата ревью:** 2026-07-19  
+**Объект:** `source_ts.md` (SRS), `brd.md`, API-документы (`API.md`, `API.en.md`, `API.zh.md`), DB-документы (`DATABASE.md`, `DATABASE.en.md`, `DATABASE.zh.md`), `DEPLOY.md`, `MULTI-CONTROL.md`.  
+**Рецензент:** Quality gate sub-agent  
+**Вердикт:** **NOT READY / НЕ ГОТОВ**  
+**Оценка:** 62 / 100
 
 ---
 
-## Top 5 Findings
+## Краткое резюме
 
-1. **Critical contradiction: API docs conflict with TS.md on Automation Matrix project source.**  
-   `TS.md §3.3` and `§4.16` state that `/api/matrix` reads projects from the DB table `projects` (only `is_active = 1`). `API.md` and `API.en.md` for `GET /api/matrix` state the opposite: "projects are read directly from `stAuto0/config/projects.py` … synchronization is not required." These two statements are mutually exclusive.  
-   **Impact:** Implementer cannot know whether matrix configuration is database-driven or file-driven.  
-   **Recommendation:** Pick the canonical source (DB per TS.md), update all API docs, and remove the stale `allowed_profile_ids` language if it no longer applies.
-
-2. **Database schema docs are incomplete vs. TS.md / BRD.**  
-   `TS.md §3.3` and `BR-05` require tables `projects`, `project_profile_config`, `runs`, `run_tasks`. The DATABASE docs (`*.md`, `*.en.md`, `*.zh.md`) only describe `profiles`, `proxies`, `cookies`, `profile_logs`, `system_config`. They omit the four Automation Matrix tables, their columns, indexes, and foreign-key relationships. They also mention `tasks` and `task_executions` in the relationships diagram, which are neither defined nor referenced elsewhere.  
-   **Impact:** DB schema docs do not match the implemented/required schema; risk of integration drift.  
-   **Recommendation:** Add full sections for `projects`, `project_profile_config`, `runs`, `run_tasks`; remove or define `tasks` / `task_executions`.
-
-3. **Multi-Control version drift and native-hook limitation is under-documented in API docs.**  
-   `TS.md` labels Multi-Control "v0.13.0", while `MULTI-CONTROL.md` says "Current: v0.15.0". The API docs repeat "v0.13.0". More importantly, the Windows-only nature of `WH_KEYBOARD_LL` hooks is explained in `DEPLOY.md` but is not reflected in the API/Multi-Control sections of `API.md`, `API.en.md`, or `API.zh.md` beyond a generic note about OS-level hooks.  
-   **Impact:** macOS/Linux consumers may assume full keyboard sync parity.  
-   **Recommendation:** Add an explicit "Platform Limitations" block to every API doc Multi-Control section stating that native hooks are Windows-only and CDP-only fallback applies on macOS/Linux.
-
-4. **Deployment doc omits required runtime prerequisites and environment variables.**  
-   `DEPLOY.md` covers build dependencies well, but does not document: the `PORT` environment variable (the canonical way the GUI passes the Core port per `TS.md §3.4`), `--api-token` CLI semantics, required Node version constraints for Electron vs. Core, Python/venv setup for stAuto0 integration, or how `STAUTO0_PATH` / `PYTHON_PATH` map to settings.  
-   **Impact:** Dev/ops cannot reproduce a working environment from docs alone.  
-   **Recommendation:** Add a "Runtime Environment" section covering `PORT`, `--api-token`, Node/Electron ABI compatibility, stAuto0 paths, and master-password/recovery-key first-run flow.
-
-5. **Translation docs diverge in completeness and contain stale content.**  
-   - `API.zh.md` omits the `/api/projects` full CRUD responses and the `PUT /api/settings/automation` `syncResult` response; it also lacks the "Projects / Matrix / Runs" sections present in `API.md` and `API.en.md` (the Chinese doc stops at Settings, then jumps to Profile Statuses).  
-   - `API.zh.md` and `API.en.md` keep the stale `allowed_profile_ids` / "read from config file" matrix wording.  
-   - `API.en.md` is missing the entire Projects/Matrix/Runs/Internal-runs sections that exist in `API.md`.  
-   **Impact:** Non-Russian consumers cannot rely on localized docs; BRD/TS.md intent is not propagated.  
-   **Recommendation:** Re-sync `API.en.md` and `API.zh.md` against the canonical `API.md`, ensuring every endpoint, status, and error is translated and consistent.
+Пакет документации покрывает большинство высокоуровневых фич MultiManager v2.0.0 и внутренне непротиворечив в рамках одного языка. Однако множество междокументных противоречий, неполнота схемы БД, непоследовательность многоязычных API-документов и отсутствие сведений о runtime/deployment делают пакет непригодным в качестве единого источника истины для разработки или QA. Требуется доработка перед статусом READY.
 
 ---
 
-## Detailed Findings
+## Топ-5 находок
 
-### 1. Consistency TS.md ↔ API / DATABASE / DEPLOY / MULTI-CONTROL
+1. **Критическое противоречие: API-документы конфликтуют с TS.md по источнику проектов Automation Matrix.**  
+   `TS.md §3.3` и `§4.16` утверждают, что `/api/matrix` читает проекты из таблицы БД `projects` (только `is_active = 1`). `API.md` и `API.en.md` для `GET /api/matrix` утверждают прямо противоположное: «проекты читаются напрямую из `stAuto0/config/projects.py` … синхронизация не требуется». Эти утверждения взаимоисключающие.  
+   **Влияние:** разработчик не может понять, управляется ли матрица через БД или через файл.  
+   **Рекомендация:** выбрать канонический источник (БД, как в TS.md), обновить все API-документы и убрать устаревшие формулировки про `allowed_profile_ids`, если они больше не актуальны.
 
-| Area | TS.md / BRD | Docs | Status |
-|------|-------------|------|--------|
-| Matrix projects source | DB `projects` table, `is_active=1` | API.md / API.en.md say direct file read; API.zh.md omits section | ❌ Contradiction |
-| `/api/projects` CRUD | `GET/POST(sync)/:name GET/PUT/DELETE` | Present in API.md; missing from API.en.md / API.zh.md | ❌ Inconsistent |
-| `/api/runs` endpoints | Full CRUD + start/cancel + callback | Present in API.md; missing from API.en.md / API.zh.md | ❌ Inconsistent |
-| `task_executions` table | Relationship diagram references it | Not defined anywhere | ❌ Undefined artifact |
-| Auth token passing | `--api-token` + env `PORT` | API docs only mention `--api-token`; DEPLOY.md omits `PORT` | ⚠️ Incomplete |
-| Core port | Env `PORT` per `TS.md §3.4` | API docs say default 3000; DEPLOY.md says 3000–3100; none specify env | ⚠️ Incomplete |
-| Multi-Control version | TS.md: v0.13.0; MULTI-CONTROL.md: v0.15.0 | API docs: v0.13.0 | ⚠️ Drift |
+2. **Документация схемы БД неполна относительно TS.md / BRD.**  
+   `TS.md §3.3` и `BR-05` требуют таблиц `projects`, `project_profile_config`, `runs`, `run_tasks`. DATABASE-документы (`*.md`, `*.en.md`, `*.zh.md`) описывают только `profiles`, `proxies`, `cookies`, `profile_logs`, `system_config`. Они не описывают четыре таблицы Automation Matrix, их колонки, индексы и внешние ключи. Также в диаграмме связей упоминаются `tasks` и `task_executions`, которые нигде не определены и не используются.  
+   **Влияние:** схема БД в документации не соответствует реальной/требуемой схеме; риск дрейфа интеграции.  
+   **Рекомендация:** добавить полные разделы для `projects`, `project_profile_config`, `runs`, `run_tasks`; удалить или определить `tasks` / `task_executions`.
 
-### 2. API Contract Completeness
+3. **Дрейф версий Multi-Control и недостаточно явно документированное ограничение native hooks.**  
+   `TS.md` маркирует Multi-Control как «v0.13.0», в то время как `MULTI-CONTROL.md` указывает «Current: v0.15.0». API-документы повторяют «v0.13.0». Более важно, что Windows-only характер `WH_KEYBOARD_LL` hooks объясняется в `DEPLOY.md`, но не отражается в разделах API/Multi-Control в `API.md`, `API.en.md`, `API.zh.md` за исключением общей ссылки на OS-level hooks.  
+   **Влияние:** пользователи macOS/Linux могут предположить полную паритетность синхронизации клавиатуры.  
+   **Рекомендация:** добавить явный блок «Platform Limitations» в раздел Multi-Control каждого API-документа, указывающий, что native hooks только для Windows, а на macOS/Linux используется CDP-only fallback.
 
-- **Profiles:** `POST /api/profiles` claims required fields are only `name` and `platform`, but `TS.md §3.2` says `timezone` is mandatory at creation. The doc says "timezone is required" in prose but does not enforce it in the "Required Fields" list. Minor inconsistency.
-- **Browser / clean:** Doc says "only for stopped profiles" and shows 409, but `TS.md §4.8` says mutex during starting/running also returns 409. Wording is close enough but should mention mutex.
-- **Settings:** `/api/settings/automation` response includes `availableProjects`, but there is no explicit endpoint to list available projects independently.
-- **Internal API:** `POST /api/internal/runs/:id/task-status` is only documented in `API.md`/`API.en.md`; missing from `API.zh.md`.
-- **WebSocket:** Not documented in any API doc, despite being part of the architecture (`TS.md §1`, `§9.6`).
-- **Missing documented 503:** `TS.md §2` says 503 if token not initialized; no API doc error-code table includes 503.
-- **Missing endpoint:** `POST /api/browser/shutdown` (mass shutdown) in `TS.md §4.9` is not present in API docs.
+4. **DEPLOY.md не описывает необходимые runtime-зависимости и переменные окружения.**  
+   `DEPLOY.md` хорошо покрывает сборочные зависимости, но не документирует: переменную окружения `PORT` (канонический способ передачи порта Core из GUI согласно `TS.md §3.4`), семантику CLI `--api-token`, ограничения по версиям Node для Electron vs Core, настройку Python/venv для интеграции stAuto0, маппинг `STAUTO0_PATH` / `PYTHON_PATH` в настройки, процедуру restore из backup.  
+   **Влияние:** dev/ops не смогут воспроизвести рабочее окружение только по документации.  
+   **Рекомендация:** добавить раздел «Runtime Environment», покрывающий `PORT`, `--api-token`, совместимость ABI Node/Electron, пути stAuto0, first-run flow мастер-пароля/recovery-key.
 
-### 3. Database Schema Completeness
-
-- Missing tables: `projects`, `project_profile_config`, `runs`, `run_tasks`.
-- Missing column-level detail for `projects.name` PK, `default_config` JSON semantics, `run_tasks.log_file_path`, `attempts`, etc.
-- `tasks` / `task_executions` are shown in the relationships diagram but not defined; `task_executions` is not mentioned in TS.md either. This appears to be a stale or implicit artifact that should be defined or removed.
-- No DDL for foreign keys / cascading rules for the new tables.
-- All three language versions are equally incomplete.
-
-### 4. Deployment / Environment Coverage
-
-- Good build steps for Windows NSIS, macOS DMG, Linux AppImage.
-- Missing: first-run configuration, how the GUI forks Core, env `PORT`, `--api-token` regeneration, master-key setup, stAuto0 integration path, log directory layout, backup restore procedure.
-- Native module ABI mismatch troubleshooting is present, but no guidance on pinning Electron Node ABI or using `electron-rebuild` in CI.
-
-### 5. Multi-Control Cross-Platform Limitation
-
-- `DEPLOY.md §6` and `§7` correctly note `hooks.node` is Windows-only and that macOS/Linux fall back to CDP-only.
-- `MULTI-CONTROL.md` documents the native C++ addon and double-dispatch behavior in depth.
-- `API.md`/`.en.md`/`.zh.md` Multi-Control sections do **not** contain a visible cross-platform limitation warning; a reader could assume native hooks work everywhere.
-
-### 6. Gaps, Contradictions, Implicit Artifacts
-
-- **BRD vs. TS.md on port passing:** `BRD §6` says GUI passes port through env `PORT`; this matches `TS.md §3.4`. However `BRD §6` also says "token passes through env PORT" which is a typo (token uses CLI `--api-token`).
-- **Cookie drag-and-drop:** Marked "partial" in TS.md/BRD, not mentioned at all in API docs.
-- **Window Arranger grouped endpoints:** Documented in API docs but marked not implemented in TS.md/BRD (cross-platform grouping). API docs present them without caveat.
-- **`profiles.number` format:** `API Internal` `range=001-010` implies zero-padded 3-digit numbers, but schema says `INTEGER`; doc does not define the numbering rule.
-- **`MULTI-CONTROL.md` file extraction artifact:** The cached result file is a JSON-escaped blob; the actual `MULTI-CONTROL.md` file content was not returned cleanly by `read_file`, suggesting the file may contain very long lines or encoding issues, but the content itself is usable and complete.
+5. **Переводы API-документов расходятся по полноте и содержат устаревший контент.**  
+   - `API.zh.md` не включает полные CRUD-ответы `/api/projects` и ответ `PUT /api/settings/automation` с `syncResult`; также отсутствуют разделы «Projects / Matrix / Runs», присутствующие в `API.md` и `API.en.md` (китайский документ обрывается на Settings, затем перескакивает на Profile Statuses).  
+   - `API.zh.md` и `API.en.md` сохраняют устаревшую формулировку `allowed_profile_ids` / «read from config file» для матрицы.  
+   - `API.en.md` не содержит целых разделов Projects/Matrix/Runs/Internal-runs, которые есть в `API.md`.  
+   **Влияние:** не-русскоязычные потребители не могут полагаться на локализованные документы; интент BRD/TS.md не переносится.  
+   **Рекомендация:** пересинхронизировать `API.en.md` и `API.zh.md` с каноническим `API.md`, обеспечив перевод каждого endpoint, статуса и ошибки.
 
 ---
 
-## Scoring Breakdown
+## Детальные находки
 
-| Criterion | Weight | Score | Notes |
+### 1. Согласованность TS.md ↔ API / DATABASE / DEPLOY / MULTI-CONTROL
+
+| Область | TS.md / BRD | Документы | Статус |
+|---------|-------------|-----------|--------|
+| Источник проектов Matrix | Таблица БД `projects`, `is_active=1` | API.md / API.en.md утверждают прямое чтение из файла; API.zh.md опускает раздел | ❌ Противоречие |
+| `/api/projects` CRUD | `GET/POST(sync)/:name GET/PUT/DELETE` | Есть в API.md; отсутствует в API.en.md / API.zh.md | ❌ Несогласованность |
+| `/api/runs` endpoints | Полный CRUD + start/cancel + callback | Есть в API.md; отсутствует в API.en.md / API.zh.md | ❌ Несогласованность |
+| Таблица `task_executions` | Упоминается в диаграмме связей | Не определена нигде | ❌ Неявный артефакт |
+| Передача токена | `--api-token` + env `PORT` | API-документы упоминают только `--api-token`; DEPLOY.md не упоминает `PORT` | ⚠️ Неполно |
+| Порт Core | env `PORT` по `TS.md §3.4` | API-документы пишут default 3000; DEPLOY.md пишет 3000–3100; нигде не указан env | ⚠️ Неполно |
+| Версия Multi-Control | TS.md: v0.13.0; MULTI-CONTROL.md: v0.15.0 | API-документы: v0.13.0 | ⚠️ Дрейф |
+
+### 2. Полнота API-контрактов
+
+- **Profiles:** `POST /api/profiles` пишет, что обязательны только `name` и `platform`, но `TS.md §3.2` требует `timezone` при создании. В тексте есть «timezone required», но не в списке обязательных полей — небольшое несоответствие.
+- **Browser / clean:** документ пишет «only for stopped profiles» и показывает 409, но `TS.md §4.8` говорит, что мьютекс при starting/running тоже возвращает 409. Формулировка близка, но стоит явно упомянуть мьютекс.
+- **Settings:** ответ `/api/settings/automation` включает `availableProjects`, но нет отдельного endpoint для их списка.
+- **Internal API:** `POST /api/internal/runs/:id/task-status` задокументирован только в `API.md`/`API.en.md`; отсутствует в `API.zh.md`.
+- **WebSocket:** не задокументирован ни в одном API-документе, хотя является частью архитектуры (`TS.md §1`, `§9.6`).
+- **Отсутствует 503:** `TS.md §2` указывает 503, если токен не инициализирован; ни в одном API-документе код 503 не приведён.
+- **Отсутствует endpoint:** `POST /api/browser/shutdown` (массовая остановка) из `TS.md §4.9` не представлен в API-документах.
+
+### 3. Полнота схемы БД
+
+- Отсутствуют таблицы: `projects`, `project_profile_config`, `runs`, `run_tasks`.
+- Нет детализации колонок: `projects.name` PK, семантика `default_config` JSON, `run_tasks.log_file_path`, `attempts` и т.д.
+- `tasks` / `task_executions` показаны в диаграмме связей, но не определены; `task_executions` не упоминается в TS.md. Похоже на устаревший или неявный артефакт, который нужно либо определить, либо удалить.
+- Нет DDL внешних ключей / каскадных правил для новых таблиц.
+- Все три языковые версии одинаково неполны.
+
+### 4. Покрытие deployment / окружения
+
+- Хорошо описаны шаги сборки Windows NSIS, macOS DMG, Linux AppImage.
+- Отсутствуют: first-run конфигурация, как GUI fork'ает Core, env `PORT`, `--api-token` regeneration, настройка master-key, интеграция stAuto0, layout директории логов, процедура restore из backup.
+- Есть troubleshooting ABI-mismatch native-модулей, но нет указания по pin-у Electron Node ABI или использованию `electron-rebuild` в CI.
+
+### 5. Cross-platform ограничение Multi-Control
+
+- `DEPLOY.md §6` и `§7` корректно отмечают, что `hooks.node` только Windows, а на macOS/Linux fallback к CDP-only.
+- `MULTI-CONTROL.md` детально описывает native C++ addon и double-dispatch.
+- `API.md`/`.en.md`/`.zh.md` в разделах Multi-Control **не содержат** явного предупреждения об ограничении; можно предположить, что native hooks работают везде.
+
+### 6. Пробелы, противоречия, неявные артефакты
+
+- **BRD vs TS.md по передаче порта:** `BRD §6` пишет, что GUI передаёт порт через env `PORT` — это соответствует `TS.md §3.4`. Но в `BRD §6` также написано «token передаётся через env PORT» — это опечатка (токен передаётся через CLI `--api-token`).
+- **Cookie drag-and-drop:** помечен как «partial» в TS.md/BRD, но в API-документах не упоминается вовсе.
+- **Window Arranger группировка:** endpoint'ы задокументированы, но в TS.md/BRD помечены как не реализованные (cross-platform группировка). API-документы не содержат caveat.
+- **`profiles.number` формат:** Internal API `range=001-010` подразумевает 3-значный zero-padded номер, но в схеме `INTEGER`; правило нумерации не определено.
+- **`MULTI-CONTROL.md` extraction artifact:** кешированный результат был JSON-escaped blob; сам файл читается корректно, но содержит очень длинные строки. Контент полный и пригодный.
+
+---
+
+## Распределение оценки
+
+| Критерий | Вес | Балл | Примечание |
 |-----------|--------|-------|-------|
-| Internal consistency (TS ↔ docs) | 25 % | 11 / 25 | Major contradictions on matrix source, version drift, missing shutdown endpoint. |
-| API contract completeness | 20 % | 11 / 20 | Core endpoints present; missing WebSocket, 503, mass shutdown, internal callback in zh. |
-| DB schema completeness | 20 % | 8 / 20 | Four tables missing; stale `tasks/task_executions` references. |
-| Deployment / environment coverage | 15 % | 9 / 15 | Build covered; runtime env, token, port, stAuto0 setup missing. |
-| Multi-language parity | 10 % | 4 / 10 | `en` and `zh` API docs are incomplete/stale vs. Russian canonical. |
-| Multi-Control limitation clarity | 10 % | 6 / 10 | Clear in DEPLOY/MULTI-CONTROL; absent from API docs. |
-| **Total** | **100 %** | **62 / 100** | |
+| Внутренняя согласованность (TS ↔ документы) | 25 % | 11 / 25 | Крупные противоречия по источнику матрицы, дрейф версий, отсутствие shutdown endpoint. |
+| Полнота API-контрактов | 20 % | 11 / 20 | Основные endpoint'ы есть; отсутствуют WebSocket, 503, массовый shutdown, internal callback в zh. |
+| Полнота схемы БД | 20 % | 8 / 20 | Четыре таблицы отсутствуют; устаревшие ссылки tasks/task_executions. |
+| Покрытие deployment / окружения | 15 % | 9 / 15 | Сборка покрыта; runtime env, токен, порт, настройка stAuto0 отсутствуют. |
+| Многоязычный паритет | 10 % | 4 / 10 | EN и ZH API-документы неполные/устаревшие по сравнению с русским каноном. |
+| Ясность ограничений Multi-Control | 10 % | 6 / 10 | Ясно в DEPLOY/MULTI-CONTROL; отсутствует в API-документах. |
+| **Итого** | **100 %** | **62 / 100** | |
 
 ---
 
-## Required Actions Before Re-Review
+## Обязательные действия перед повторным ревью
 
-1. Resolve and unify the Automation Matrix project source: update all API docs to match `TS.md` (DB-driven, `is_active=1`).
-2. Add `projects`, `project_profile_config`, `runs`, `run_tasks` schema definitions to all DATABASE docs; remove or define `tasks` / `task_executions`.
-3. Re-sync `API.en.md` and `API.zh.md` with `API.md` (Projects, Matrix, Runs, Internal callback, Settings syncResult).
-4. Add a "Platform Limitations" callout to API Multi-Control sections (Windows-only native hooks).
-5. Add a "Runtime Environment" section to `DEPLOY.md` covering `PORT`, `--api-token`, Node/Electron ABI, stAuto0 paths, backup restore.
-6. Add missing endpoints/status codes: `POST /api/browser/shutdown`, 503, WebSocket event summary.
-7. Fix `BRD §6` typo: token is passed via `--api-token`, port via env `PORT`.
+1. Унифицировать источник проектов Automation Matrix: обновить все API-документы в соответствии с `TS.md` (управляется через БД, `is_active=1`).
+2. Добавить в DATABASE-документы определения таблиц `projects`, `project_profile_config`, `runs`, `run_tasks` на всех языках; удалить или определить `tasks` / `task_executions`.
+3. Пересинхронизировать `API.en.md` и `API.zh.md` с `API.md` (Projects, Matrix, Runs, Internal callback, Settings syncResult).
+4. Добавить callout «Platform Limitations» в раздел Multi-Control каждого API-документа (native hooks только Windows).
+5. Добавить в `DEPLOY.md` раздел «Runtime Environment», покрывающий `PORT`, `--api-token`, ABI Node/Electron, пути stAuto0, backup restore.
+6. Добавить отсутствующие endpoint'ы/статусы: `POST /api/browser/shutdown`, 503, краткое описание WebSocket-событий.
+7. Исправить опечатку в `BRD §6`: токен передаётся через `--api-token`, порт через env `PORT`.
 
 ---
 
-## Verdict
+## Вердикт
 
-**NOT READY** — The documentation package requires a revision pass focused on cross-document consistency, schema completeness, localized parity, and deployment/runtime clarity before it can support downstream system requirements or QA.
+**NOT READY / НЕ ГОТОВ** — Пакет документации требует доработки, сфокусированной на междокументной согласованности, полноте схемы БД, паритете локализаций и ясности deployment/runtime, прежде чем он сможет служить основой для системных требований или QA.
