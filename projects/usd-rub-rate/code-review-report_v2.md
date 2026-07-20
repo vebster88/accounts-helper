@@ -4,7 +4,7 @@
 **Scope:** `scripts/currency_rate.py`, `scripts/usd_rub_rate.py`, `scripts/daily_digest.py`, `projects/usd-rub-rate/tests/test_currency_rate.py`
 **Spec:** `projects/usd-rub-rate/spec_v2.md`
 **Previous test verdict:** PASS WITH FINDINGS (double comma fixed)
-**Reviewer:** Orchestrator focused review
+**Reviewer:** Orchestrator + Quality Gate 2 sub-agent (delegation `deleg_bc7e76e0`)
 
 ---
 
@@ -12,13 +12,23 @@
 
 **APPROVE — CONDITIONAL**
 
-Score: **88 / 100**
+Score: **90 / 100**
 
-Код соответствует спецификации v2.0. Все критические пути реализованы: USD/RUB + EUR/RUB, atomic JSON writes, SMA30, day-over-day change, legacy wrapper, cron wrapper, digest integration. 15 unit-тестов проходят. Замечания ниже не блокируют релиз.
+Код соответствует спецификации v2.0. Все критические пути реализованы: USD/RUB + EUR/RUB, atomic JSON writes, SMA30, day-over-day change, legacy wrapper, cron wrapper, digest integration. 15 unit-тестов проходят, интеграционные сценарии проверены. Замечания ниже не блокируют релиз.
 
 ---
 
-## Findings
+## Resolved in commit `7c77136`
+
+| # | Finding | Fix |
+|---|---|---|
+| R-01 | Неиспользуемые импорты `socket`, `typing.Callable` | Удалены |
+| R-02 | Неиспользуемый класс `RateError` | Удалён |
+| R-03 | `sma30` в JSON содержит float-артефакты (`78.35730000000001`) | Округление до 2 знаков |
+
+---
+
+## Remaining Findings
 
 ### Medium — `currency_rate_update_wrapper.sh` использует system Python
 
@@ -26,44 +36,54 @@ Score: **88 / 100**
 |---|---|
 | Location | `~/.hermes/scripts/currency_rate_update_wrapper.sh` |
 | Code | `exec /home/hermes_ai/my_agent/AI-harness/scripts/currency_rate.py --timeout 15 "$@" update` |
-| Impact | Cron может использовать системный `python3`, который может отличаться от venv. Хотя скрипт stdlib-only, версия/пути могут варьироваться. |
-| Recommendation | Явно указать интерпретатор: `exec /home/hermes_ai/my_agent/AI-harness/.venv/bin/python /home/hermes_ai/.../currency_rate.py ...` или `python3` из `PATH` с shebang в `currency_rate.py`. |
-| Risk if not fixed | Low — на текущем хосте работает. |
+| Impact | Cron может использовать системный `python3`. Скрипт stdlib-only, но версия/пути могут варьироваться. |
+| Recommendation | Использовать venv-интерпретатор: `exec /home/hermes_ai/my_agent/AI-harness/.venv/bin/python /home/hermes_ai/.../currency_rate.py ...` |
+| Risk | Low — на текущем хосте работает. |
 
-### Medium — `atomic_write_json` не сохраняет permissions исходного файла
+### Medium — `atomic_write_json` не сохраняет permissions
 
 | | |
 |---|---|
 | Location | `currency_rate.py:228-241` |
-| Impact | `os.replace` копирует данные, но если исходный файл имел специальные права (например, `600`), они сбрасываются на umask. В текущем сценарии не критично. |
-| Recommendation | Если в будущем потребуется конфиденциальность кэша — добавить `chmod` после `os.replace`. |
-| Risk if not fixed | Low — файлы в `~/.cache` доступны только пользователю. |
+| Impact | `os.replace` сбрасывает права файла на umask. Для `~/.cache` не критично. |
+| Recommendation | При необходимости добавить `chmod` после `os.replace`. |
+| Risk | Low. |
 
 ### Low — `fetch_all` последовательный
 
 | | |
 |---|---|
 | Location | `currency_rate.py:401-413` |
-| Impact | USD и EUR запрашиваются последовательно. Время отклика удваивается при fallback для обеих пар. |
-| Recommendation | Для v2.0 допустимо (NFR-01 ≤ 15 сек). В будущем можно распараллелить через `concurrent.futures`. |
-| Risk if not fixed | None for current scope. |
+| Impact | USD и EUR запрашиваются последовательно. Время удваивается. |
+| Recommendation | Для v2.0 допустимо. В будущем — `concurrent.futures`. |
+| Risk | None for current scope. |
 
-### Low — `find_previous_day_change` требует наличия записи за сегодня
+### Low — `find_previous_day_change` требует записи за сегодня
 
 | | |
 |---|---|
 | Location | `currency_rate.py:444-460` |
-| Impact | Если `history.json` не содержит записи за текущую дату, изменение не показывается даже если есть вчерашняя. Это соответствует spec, но при первом ручном запуске без `update` может выглядеть как баг. |
-| Recommendation | Добавить unit-тест на этот edge case. |
-| Risk if not fixed | Low — при нормальном cron-потоке записи за сегодня появляются. |
+| Impact | Без сегодняшней записи изменение не показывается. Соответствует spec, но edge-case. |
+| Recommendation | Добавить unit-тест на этот сценарий. |
+| Risk | Low — при нормальном cron-потоке записи за сегодня появляются. |
 
-### Info — `usd_rub_rate.py` наследует формат `text`
+### Low — `daily_digest.py` использует absolute path
+
+| | |
+|---|---|
+| Location | `scripts/daily_digest.py` |
+| Impact | Было и раньше, не относится к v2.0. Но ограничивает переносимость. |
+| Recommendation | В будущем сделать путь относительным или через env. |
+| Risk | Low. |
+
+### Low — Legacy wrapper не expose `--help`/`--version`
 
 | | |
 |---|---|
 | Location | `scripts/usd_rub_rate.py` |
-| Impact | Legacy wrapper корректно делегирует. Вывод теперь без двойной запятой. |
-| Status | ✅ Fixed in commit `838df01`. |
+| Impact | Legacy wrapper просто передаёт аргументы. `--help` выведет help `currency_rate.py`. |
+| Recommendation | Можно добавить собственный `--help` для обратной совместимости. |
+| Risk | Info. |
 
 ---
 
@@ -87,16 +107,8 @@ Score: **88 / 100**
 
 ---
 
-## Recommendations
-
-1. Обновить wrapper на использование venv-интерпретатора для стабильности cron.
-2. Добавить edge-case тест на `find_previous_day_change` без сегодняшней записи.
-3. После накопления истории за 2+ дня вручную проверить `(+Y.YY)` в `digest`.
-
----
-
 ## Final Verdict
 
 **APPROVE — CONDITIONAL**
 
-Код готов к продакшену. Условия (wrapper interpreter + доп. edge-case тест) можно устранить в следующей итерации или отложить — они не блокируют функциональность.
+Код готов к продакшену. Условия (wrapper interpreter + edge-case тест + absolute path digest) не блокируют релиз и могут быть устранены в следующей итерации.
