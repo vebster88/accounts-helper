@@ -256,9 +256,10 @@ currency_rate.py [-h] [--currency {usd,eur,all}] [--source {auto,cbr,fallback}]
 ### SR-10 — Cron-интеграция
 **Требования:**
 1. Задание `currency-rate-daily-update`: `0 12 * * *` MSK.
-2. Команда через wrapper: `currency_rate_update_wrapper.sh` → `currency_rate.py update --timeout 15`.
-3. Задание `daily-telegram-digest`: `0 8 * * *` MSK.
-4. `daily_digest.py` вызывает `currency_rate.py --timeout 15 report --format digest`.
+2. Команда через wrapper: `currency_rate_update_wrapper.sh` → `currency_rate.py --timeout 15 "$@" update`.
+3. Wrapper размещается в `~/.hermes/scripts/` как Hermes-конфигурация (вне Git-репозитория `AI-harness`).
+4. Задание `daily-telegram-digest`: `0 8 * * *` MSK.
+5. `daily_digest.py` вызывает `currency_rate.py --timeout 15 report --format digest`.
 
 ### SR-11 — Настройки по умолчанию
 **Требования:**

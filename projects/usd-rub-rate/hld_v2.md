@@ -308,6 +308,8 @@ sequenceDiagram
 
 ### 7.3 Wrapper `currency_rate_update_wrapper.sh`
 
+Размещается в `~/.hermes/scripts/` как часть конфигурации Hermes (не версионируется в `AI-harness`, но может быть скопирован туда при миграции).
+
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
