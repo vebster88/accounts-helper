@@ -415,17 +415,16 @@ def fetch_all(
 
 def format_rate_line(currency: str, result: RateResult, sma: float | None = None, stale: bool = False) -> str:
     meta = CURRENCIES[currency]
+    header = f"{meta['symbol']}: {result.rate:.2f}"
     parts = [
-        f"{meta['symbol']}: {result.rate:.2f}",
-        f"(источник: {result.source_name}",
+        f"источник: {result.source_name}",
         f"дата: {result.timestamp.strftime('%Y-%m-%d')}",
     ]
     if sma is not None:
         parts.append(f"SMA30: {sma:.2f}")
     if stale:
         parts.append("кэш")
-    line = ", ".join(parts)
-    return line + ")"
+    return f"{header} ({', '.join(parts)})"
 
 
 def format_digest_line(currency: str, result: RateResult, sma: float | None = None, change: float | None = None) -> str:
