@@ -9,6 +9,7 @@ from daily_digest.py for a digest-friendly summary.
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import logging
 import os
@@ -17,9 +18,11 @@ import sys
 import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
+from argparse import ArgumentParser, Namespace
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 __version__ = "2.0.0"
@@ -309,7 +312,7 @@ def update_history(history: dict[str, list[dict]], results: dict[str, RateResult
         entries = [e for e in entries if e["date"] != entry_date_str]
         entries.append({
             "date": entry_date_str,
-            "rate": result.rate,
+            "rate": round(result.rate, 2),
             "source": result.source,
             "source_name": result.source_name,
             "timestamp": result.timestamp.isoformat(),
@@ -397,10 +400,20 @@ def fetch_all(
     verbose: bool,
 ) -> dict[str, RateResult]:
     results: dict[str, RateResult] = {}
-    for currency in currencies:
-        result = fetch_currency(currency, source, timeout, no_fallback, verbose)
-        if result:
-            results[currency] = result
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(currencies)) as executor:
+        future_to_currency = {
+            executor.submit(fetch_currency, currency, source, timeout, no_fallback, verbose): currency
+            for currency in currencies
+        }
+        for future in concurrent.futures.as_completed(future_to_currency):
+            currency = future_to_currency[future]
+            try:
+                result = future.result()
+                if result:
+                    results[currency] = result
+            except Exception:
+                if verbose:
+                    print(f"[WARN] Ошибка получения {currency}", file=sys.stderr)
     return results
 
 
@@ -562,7 +575,7 @@ def run_report(args: argparse.Namespace) -> int:
             if currency in results:
                 sma = compute_sma(history.get(currency, []), args.moving_average_days)
                 output[currency] = {
-                    "rate": results[currency].rate,
+                    "rate": round(results[currency].rate, 2),
                     "source": results[currency].source,
                     "source_name": results[currency].source_name,
                     "timestamp": results[currency].timestamp.isoformat(),

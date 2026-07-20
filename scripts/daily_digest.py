@@ -11,6 +11,7 @@
 
 import argparse
 import logging
+import os
 import re
 import subprocess
 import sys
@@ -23,8 +24,9 @@ logging.basicConfig(
     stream=sys.stderr,
 )
 
+PROJECT_DIR = Path(os.environ.get("PROJECT_DIR", "/home/hermes_ai/my_agent/AI-harness"))
 WEATHER_SCRIPT = Path.home() / ".hermes" / "scripts" / "weather_daily.py"
-RATE_SCRIPT = Path("/home/hermes_ai/my_agent/AI-harness/scripts/currency_rate.py")
+RATE_SCRIPT = PROJECT_DIR / "scripts" / "currency_rate.py"
 TELEGRAM_LIMIT = 4096
 MD_SPECIAL = re.escape(r"*_[]()~`>#+=")
 MD_RE = re.compile(f"[{MD_SPECIAL}]")

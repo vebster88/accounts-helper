@@ -153,6 +153,16 @@ def test_find_previous_day_change_missing():
     assert change is None
 
 
+def test_find_previous_day_change_without_today():
+    history = [
+        {"date": "2026-07-17", "rate": 88.0},
+        {"date": "2026-07-18", "rate": 90.0},
+        {"date": "2026-07-19", "rate": 92.0},
+    ]
+    change = cr.find_previous_day_change(history, date(2026, 7, 20))
+    assert change is None
+
+
 def test_atomic_write_json(tmp_path):
     target = tmp_path / "data.json"
     cr.atomic_write_json(target, {"a": 1, "b": [2, 3]})
