@@ -13,7 +13,6 @@ import json
 import logging
 import os
 import re
-import socket
 import sys
 import urllib.error
 import urllib.request
@@ -21,7 +20,6 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Callable
 from urllib.parse import urlparse
 
 __version__ = "2.0.0"
@@ -67,10 +65,6 @@ class RateResult:
     source_name: str
     timestamp: datetime
     cached: bool = False
-
-
-class RateError(Exception):
-    pass
 
 
 def get_user_agent() -> str:
@@ -575,7 +569,7 @@ def run_report(args: argparse.Namespace) -> int:
                     "source": results[currency].source,
                     "source_name": results[currency].source_name,
                     "timestamp": results[currency].timestamp.isoformat(),
-                    "sma30": sma,
+                    "sma30": round(sma, 2) if sma is not None else None,
                 }
         print(json.dumps(output, ensure_ascii=False, indent=2))
     else:
