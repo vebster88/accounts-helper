@@ -1,5 +1,5 @@
 ---
-status: draft
+status: approved
 title: Высокоуровневое проектирование — Мультивалютный скрипт курсов USD/RUB и EUR/RUB v2.0
 author: Architect sub-agent
 project: /home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate
@@ -287,8 +287,8 @@ sequenceDiagram
 
 - История обрезается до `--history-days` (по умолчанию 90) при каждом обновлении.
 - Записи дедуплицируются по дате в рамках одной валюты (при обновлении удаляется старая запись за тот же день).
-- Запись ведётся через перезапись файла (`open(..., 'w')`); для повышения надёжности в будущем рекомендуется атомарная запись `tmp + rename`.
-- При повреждении JSON скрипт стартует с пустой истории/кэша.
+- Запись ведётся атомарно: запись во временный файл `{name}.tmp.{pid}` в той же директории, затем `os.replace(tmp, target)`.
+- При повреждении JSON скрипт стартует с пустой историей/кэша.
 
 ---
 
@@ -311,8 +311,9 @@ sequenceDiagram
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
-VENV=/home/hermes_ai/my_agent/AI-harness/.venv/bin/python
-SCRIPT=/home/hermes_ai/my_agent/AI-harness/scripts/currency_rate.py
+PROJECT_DIR="${PROJECT_DIR:-/home/hermes_ai/my_agent/AI-harness}"
+VENV="${PROJECT_DIR}/.venv/bin/python"
+SCRIPT="${PROJECT_DIR}/scripts/currency_rate.py"
 exec "$VENV" "$SCRIPT" update --timeout 15
 ```
 

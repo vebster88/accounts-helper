@@ -19,7 +19,7 @@ version: 2.0.0
 - `currency_rate.py` — основной исполняемый скрипт v2.0.0.
 - `usd_rub_rate.py` — legacy-скрипт v1.0.0.
 - `daily_digest.py` — сборка утреннего дайджеста.
-- `tests/test_currency_rate.py` — unit-тесты.
+- `docs/architect-collector-summary.md` — краткая сводка контекста, собранного на старте pipeline (cron-интеграция, drift доков/кода, риски).
 
 ## 3. Глоссарий
 
