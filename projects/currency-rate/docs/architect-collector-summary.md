@@ -1,15 +1,15 @@
-# Architect Collector Summary: usd-rub-rate
+# Architect Collector Summary: currency-rate
 
 ## Metadata
 
-- Project path: `/home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate`
+- Project path: `/home/hermes_ai/my_agent/AI-harness/projects/currency-rate`
 - Generated: 2026-07-20
 - Collector: architect-collector
 - Focus areas: currency rate script enhancement, EUR/RUB support, 90-day history, 30-day MA, cron integration, digest integration
 
 ## Executive Summary
 
-The `usd-rub-rate` project is a stdlib-only Python utility that already evolved from a USD/RUB-only script (`usd_rub_rate.py`) into a multi-currency version (`currency_rate.py`) supporting USD/RUB and EUR/RUB with a 90-day history store and a 30-day moving average. The implementation is mostly complete and tested, but the BRD/HLD/spec documents still describe the **old** USD/RUB-only scope and do not cover the new features. The daily digest cron (`daily-telegram-digest`) already calls the new script. A separate silent daily update cron at 12:00 MSK is expected but not yet present in `hermes cron list`.
+The `currency-rate` project is a stdlib-only Python utility that already evolved from a USD/RUB-only script (`usd_rub_rate.py`) into a multi-currency version (`currency_rate.py`) supporting USD/RUB and EUR/RUB with a 90-day history store and a 30-day moving average. The implementation is mostly complete and tested, but the BRD/HLD/spec documents still describe the **old** USD/RUB-only scope and do not cover the new features. The daily digest cron (`daily-telegram-digest`) already calls the new script. A separate silent daily update cron at 12:00 MSK is expected but not yet present in `hermes cron list`.
 
 ## Technology Stack
 

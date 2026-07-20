@@ -1,7 +1,7 @@
-# Отчёт о тестировании: usd-rub-rate v2.0.0
+# Отчёт о тестировании: currency-rate v2.0.0
 
-**Project:** usd-rub-rate  
-**Spec:** `/home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate/spec_v2.md`  
+**Project:** currency-rate  
+**Spec:** `/home/hermes_ai/my_agent/AI-harness/projects/currency-rate/spec_v2.md`  
 **Implementation:**
 - `/home/hermes_ai/my_agent/AI-harness/scripts/currency_rate.py` v2.0.0
 - `/home/hermes_ai/my_agent/AI-harness/scripts/usd_rub_rate.py` v1.0.0

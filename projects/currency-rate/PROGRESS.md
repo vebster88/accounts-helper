@@ -1,6 +1,6 @@
-# PROGRESS: usd-rub-rate v2.0
+# PROGRESS: currency-rate v2.0
 
-- **Проект:** `/home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate`
+- **Проект:** `/home/hermes_ai/my_agent/AI-harness/projects/currency-rate`
 - **Спецификация:** `spec_v2.md` v2.0.0 (approved)
 - **Дата начала:** 2026-07-20
 

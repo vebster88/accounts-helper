@@ -2,7 +2,7 @@
 status: approved
 title: БФТ — Мультивалютный скрипт курсов USD/RUB и EUR/RUB v2.0
 author: Business Analyst sub-agent
-project: /home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate
+project: /home/hermes_ai/my_agent/AI-harness/projects/currency-rate
 version: 2.0.0
 ---
 

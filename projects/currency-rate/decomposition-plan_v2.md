@@ -1,6 +1,6 @@
-# План декомпозиции: usd-rub-rate v2.0
+# План декомпозиции: currency-rate v2.0
 
-- **Проект:** `/home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate`
+- **Проект:** `/home/hermes_ai/my_agent/AI-harness/projects/currency-rate`
 - **Спецификация:** `spec_v2.md` (версия 2.0.0, approved)
 - **Дата:** 2026-07-20
 - **Роль:** Decompose sub-agent
@@ -32,8 +32,8 @@
 | Основной скрипт `currency_rate.py` | `AI-harness/scripts/` | Уже размещён и вызывается дайджестом |
 | Legacy-обёртка `usd_rub_rate.py` | `AI-harness/scripts/` | Остаётся для обратной совместимости v1.0.0 |
 | Cron-обёртка `currency_rate_update_wrapper.sh` | `~/.hermes/scripts/` | Конвенция Hermes cron (как `daily_digest_wrapper.sh`) |
-| Unit-тесты | `AI-harness/projects/usd-rub-rate/tests/test_currency_rate.py` | Существующий файл, отражает структуру `scripts/` |
-| Планы/прогресс | `AI-harness/projects/usd-rub-rate/` | Рабочая директория задачи |
+| Unit-тесты | `AI-harness/projects/currency-rate/tests/test_currency_rate.py` | Существующий файл, отражает структуру `scripts/` |
+| Планы/прогресс | `AI-harness/projects/currency-rate/` | Рабочая директория задачи |
 
 ## Состояние existing-кода
 
@@ -55,8 +55,8 @@
 | 2 | Vibecode | Legacy-обёртка `usd_rub_rate.py` → тонкий делегатор | `AI-harness/scripts/usd_rub_rate.py` | L1: `python -m py_compile` | #3 (currency_rate.py формат text должен быть стабилен) | FR-11 |
 | 3 | Controlled | Atomic write helper и замена `save_cache`/`save_history` | `AI-harness/scripts/currency_rate.py` | L2: `pytest`, ручная проверка целостности JSON | — | FR-04, FR-05, SR-07, NFR-02 |
 | 4 | Controlled | Изменение курса за день в `format_digest_line` | `AI-harness/scripts/currency_rate.py` | L2: `pytest tests/test_currency_rate.py` + интеграционный запуск `report --format digest` | #3 (history доступна) | FR-07, BR-10, SR-09 |
-| 5 | Controlled | Установка/проверка pytest и дополнение тестов | `AI-harness/projects/usd-rub-rate/tests/test_currency_rate.py`, venv | L2: `pytest tests/test_currency_rate.py -v` | — | FR-06, FR-07, SR-03, TC-01..TC-08 |
-| 6 | Controlled | Дополнительные unit-тесты для FR-07 и atomic write | `AI-harness/projects/usd-rub-rate/tests/test_currency_rate.py` | L2: `pytest` | #3, #4 | TC-07, FR-07, SR-07 |
+| 5 | Controlled | Установка/проверка pytest и дополнение тестов | `AI-harness/projects/currency-rate/tests/test_currency_rate.py`, venv | L2: `pytest tests/test_currency_rate.py -v` | — | FR-06, FR-07, SR-03, TC-01..TC-08 |
+| 6 | Controlled | Дополнительные unit-тесты для FR-07 и atomic write | `AI-harness/projects/currency-rate/tests/test_currency_rate.py` | L2: `pytest` | #3, #4 | TC-07, FR-07, SR-07 |
 | 7 | Verified | Интеграционное тестирование `currency_rate.py update/report/history` | terminal / real API | L3: ручной запуск, exit-code, stdout/stderr, валидность JSON | #1, #3, #4 | IT-01..IT-06, IT-08..IT-10 |
 | 8 | Verified | Развёртывание cron `currency-rate-daily-update` | `hermes cron add ...` | L3: `hermes cron list`, ручной запуск обёртки | #1, #7 | CT-01..CT-03, SR-10 |
 | 9 | Verified | End-to-end проверка дайджеста с новым digest | `daily_digest.py` + cron | L3: запуск `daily_digest.py`, визуальная проверка строки | #4, #7 | IT-07, FR-12 |

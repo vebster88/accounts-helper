@@ -1,6 +1,6 @@
 ---
 status: review
-project: /home/hermes_ai/my_agent/AI-harness/projects/usd-rub-rate
+project: /home/hermes_ai/my_agent/AI-harness/projects/currency-rate
 verdict: READY
 score: 94
 scope: brd_v2.md, hld_v2.md, spec_v2.md, architect-collector-summary.md
@@ -8,7 +8,7 @@ reviewer: Quality Gate sub-agent
 version: 2.0.0
 ---
 
-# Quality Gate Review — usd-rub-rate v2.0
+# Quality Gate Review — currency-rate v2.0
 
 **Дата ревью:** 2026-07-20  
 **Объект:** `brd_v2.md`, `hld_v2.md`, `spec_v2.md`, `docs/architect-collector-summary.md`  

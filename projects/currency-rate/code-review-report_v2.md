@@ -1,8 +1,8 @@
-# Code Review Report: usd-rub-rate v2.0
+# Code Review Report: currency-rate v2.0
 
 **Date:** 2026-07-20
-**Scope:** `scripts/currency_rate.py`, `scripts/usd_rub_rate.py`, `scripts/daily_digest.py`, `projects/usd-rub-rate/tests/test_currency_rate.py`
-**Spec:** `projects/usd-rub-rate/spec_v2.md`
+**Scope:** `scripts/currency_rate.py`, `scripts/usd_rub_rate.py`, `scripts/daily_digest.py`, `projects/currency-rate/tests/test_currency_rate.py`
+**Spec:** `projects/currency-rate/spec_v2.md`
 **Previous test verdict:** PASS WITH FINDINGS (double comma fixed)
 **Reviewer:** Orchestrator + Quality Gate 2 sub-agent (delegation `deleg_bc7e76e0`)
 
