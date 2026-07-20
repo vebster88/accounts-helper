@@ -303,12 +303,9 @@ def update_history(history: dict[str, list[dict]], results: dict[str, RateResult
     today_str = today.isoformat()
     for currency, result in results.items():
         entries = history.get(currency, [])
-        entries = [e for e in entries if e["date"] != today_str]
         entry_date = result.timestamp.date()
-        if entry_date > today:
-            entry_date = today
         entry_date_str = entry_date.isoformat()
-        # Avoid duplicate for the same date if it somehow survived.
+        # Remove any existing entry for the same date to avoid duplicates.
         entries = [e for e in entries if e["date"] != entry_date_str]
         entries.append({
             "date": entry_date_str,
@@ -558,7 +555,7 @@ def run_report(args: argparse.Namespace) -> int:
                 sma = compute_sma(history.get(currency, []), args.moving_average_days)
                 change = find_previous_day_change(history.get(currency, []))
                 lines.append(format_digest_line(currency, results[currency], sma, change))
-        print(" | ".join(lines))
+        print("\n".join(lines))
     elif args.format == "json":
         output = {}
         for currency in currencies:

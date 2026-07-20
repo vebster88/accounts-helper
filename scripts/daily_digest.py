@@ -24,7 +24,7 @@ logging.basicConfig(
 )
 
 WEATHER_SCRIPT = Path.home() / ".hermes" / "scripts" / "weather_daily.py"
-RATE_SCRIPT = Path("/home/hermes_ai/my_agent/AI-harness/scripts/usd_rub_rate.py")
+RATE_SCRIPT = Path("/home/hermes_ai/my_agent/AI-harness/scripts/currency_rate.py")
 TELEGRAM_LIMIT = 4096
 MD_SPECIAL = re.escape(r"*_[]()~`>#+=")
 MD_RE = re.compile(f"[{MD_SPECIAL}]")
@@ -63,7 +63,7 @@ def run_weather_block(city_args):
 def run_rate_block():
     try:
         result = subprocess.run(
-            [sys.executable, str(RATE_SCRIPT), "--source", "auto"],
+            [sys.executable, str(RATE_SCRIPT), "--timeout", "15", "report", "--format", "digest"],
             capture_output=True,
             text=True,
             timeout=15,
@@ -71,12 +71,12 @@ def run_rate_block():
             errors="replace",
         )
         if result.stderr:
-            logging.warning("usd_rub_rate.py stderr: %s", result.stderr.strip())
+            logging.warning("currency_rate.py stderr: %s", result.stderr.strip())
         if result.returncode != 0:
             return "❌ Курс недоступен"
         return strip_markdown(result.stdout.strip())
     except subprocess.TimeoutExpired:
-        logging.error("usd_rub_rate.py timed out")
+        logging.error("currency_rate.py timed out")
         return "❌ Курс недоступен"
     except Exception:
         logging.exception("rate block failed")
@@ -122,7 +122,8 @@ def assemble_message(weather_block, rate_block):
         "",
         weather_block,
         "",
-        f"💰 {rate_block}",
+        f"💰 Курсы валют:",
+        rate_block,
         "",
         "─────────────────",
         f"🤖 Hermes daily digest  |  📅 {today}",
