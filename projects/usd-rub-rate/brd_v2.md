@@ -14,7 +14,7 @@ version: 2.0.0
 - поддерживал обе пары — USD/RUB и EUR/RUB;
 - хранил историю котировок за 90 дней;
 - вычислял 30-дневную скользящую среднюю (SMA30);
-- обновлял данные тихо по расписанию (cron) ежедневно в 12:00 по московскому времени;
+- обновлял данные тихо по расписанию (cron) ежедневно в 07:45 по московскому времени (перед дайджестом);
 - поставлял краткую сводку курсов для ежедневного Telegram-дайджеста.
 
 ## 2. Текущая ситуация AS-IS
@@ -22,7 +22,7 @@ version: 2.0.0
 - В проекте уже реализован базовый скрипт `usd_rub_rate.py`, который выводит только USD/RUB без истории и без расписания.
 - Новый скрипт `currency_rate.py` (v2.0.0) уже создан и содержит поддержку USD/RUB и EUR/RUB, 90-дневную историю, SMA30, подкоманды `update`, `report`, `history` и формат `digest`.
 - Ежедневный дайджест (`daily_digest.py`, cron `daily-telegram-digest` в 08:00 MSK) уже вызывает `currency_rate.py report --format digest`.
-- Отдельный тихий cron для обновления курсов в 12:00 MSK ещё не добавлен.
+- Отдельный тихий cron для обновления курсов в 07:45 MSK ещё не добавлен.
 - Документы `brd.md`, `brd_updated.md`, `spec.md`, `hld.md` отражают только старую USD/RUB-функциональность.
 
 ## 3. Желаемое состояние TO-BE
@@ -34,14 +34,14 @@ version: 2.0.0
   - умеет «тихо» обновлять кэш/историю через подкоманду `update`;
   - выводит результат в консольном (`text`), JSON (`json`) и дайджест-формате (`digest`).
 - Cron `daily-telegram-digest` в 08:00 MSK получает курсы обеих пар в компактном виде.
-- Cron `currency-rate-daily-update` в 12:00 MSK ежедневно выполняет `currency_rate.py update` без вывода в stdout.
+- Cron `currency-rate-daily-update` в 07:45 MSK ежедневно выполняет `currency_rate.py update` без вывода в stdout (перед дайджестом 08:00 MSK).
 - Вся документация (BRD/HLD/Spec) описывает фактический набор функций v2.0.
 
 ## 4. Бизнес-ценность
 
 - Пользователь видит сразу два ключевых валютных курса, а не только USD/RUB.
 - История и SMA30 дают контекст динамики — помогают оценить, растёт или падает курс относительно месячного среднего.
-- Автоматическое ежедневное обновление в 12:00 MSK исключает ручной запуск и держит историю актуальной.
+- Автоматическое ежедневное обновление в 07:45 MSK исключает ручной запуск и держит историю актуальной; при этом дата записи берётся из ответа API (для CBR — `ValCurs/@Date`).
 - Интеграция с утренним дайджестом повышает ценность рассылки без дополнительных действий пользователя.
 - Решение остаётся бесплатным и не требует платных API/ключей.
 
@@ -52,7 +52,7 @@ version: 2.0.0
 - История до 90 дней; окно SMA30 (конфигурируемое).
 - Источники: официальный XML API ЦБ РФ (основной), open.er-api.com (fallback).
 - Подкоманды: `update`, `report`, `history`.
-- Cron: тихое ежедневное обновление в 12:00 MSK.
+- Cron: тихое ежедневное обновление в 07:45 MSK.
 - Интеграция с `daily_digest.py` через `--format digest`.
 - Stdlib-only Python 3.11.
 
@@ -105,9 +105,13 @@ version: 2.0.0
 > **чтобы** дайджест всегда содержал свежие данные без ручного запуска.
 
 **Критерии приёмки:**
-1. Cron-задание `currency-rate-daily-update` запускается ежедневно в 12:00 MSK.
-2. Оно выполняет `currency_rate.py update` без вывода в stdout.
-3. `daily_digest.py` использует `currency_rate.py report --format digest` и получает строку вида `USD/RUB: XX.XX (SMA30: YY.YY) | EUR/RUB: ZZ.ZZ (SMA30: WW.WW)`.
+1. Cron-задание `currency-rate-daily-update` запускается ежедневно в 07:45 MSK.
+2. Оно выполняет `currency_rate.py update` без вывода в stdout (через venv-интерпретатор).
+3. `daily_digest.py` использует `currency_rate.py report --format digest` и получает многострочный блок вида:
+   ```
+   USD/RUB: XX.XX (SMA30: YY.YY)
+   EUR/RUB: ZZ.ZZ (SMA30: WW.WW)
+   ```
 4. При сбое обновления дайджест не ломается (показывает запасной текст или предыдущий кэш по логике скрипта).
 
 ## 9. Клиентский путь (CJM)
@@ -129,11 +133,11 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    H[12:00 MSK cron currency-rate-daily-update] --> I[Запускает currency_rate.py update]
+    H[07:45 MSK cron currency-rate-daily-update] --> I[Запускает currency_rate.py update]
     I --> J[Обновляет кэш и историю]
     K[08:00 MSK daily-telegram-digest] --> L[Запускает daily_digest.py]
     L --> M[Вызывает currency_rate.py report --format digest]
-    M --> N[Получает строку USD/RUB | EUR/RUB]
+    M --> N[Получает блок USD/RUB + EUR/RUB]
     N --> O[Вставляет строку в Telegram-сообщение]
 ```
 
@@ -186,8 +190,8 @@ flowchart TD
 
 **Критерии приёмки:**
 - Подкоманда `update` не печатает курсы в stdout (только логи в stderr при `--verbose`).
-- Hermes cron-задание `currency-rate-daily-update` запускается ежедневно в 12:00 MSK.
-- Wrapper-скрипт вызывает `currency_rate.py update --timeout 15`.
+- Hermes cron-задание `currency-rate-daily-update` запускается ежедневно в 07:45 MSK.
+- Wrapper-скрипт вызывает `.venv/bin/python currency_rate.py update --timeout 15`.
 - При ошибке обновления скрипт завершается с ненулевым кодом, но не ломает другие cron-задания.
 
 **Приоритет:** Must have.
@@ -198,8 +202,12 @@ flowchart TD
 
 **Критерии приёмки:**
 - `daily_digest.py` вызывает `currency_rate.py report --format digest`.
-- Формат `digest` выдаёт строку: `USD/RUB: XX.XX (SMA30: YY.YY) | EUR/RUB: ZZ.ZZ (SMA30: WW.WW)`.
-- Если курсы недоступны, дайджест выводит fallback-сообщение (`❌ Курс недоступен` или аналогичное), не прерывая сборку сообщения.
+- Формат `digest` выдаёт многострочный блок:
+  ```
+  USD/RUB: XX.XX (SMA30: YY.YY)
+  EUR/RUB: ZZ.ZZ (SMA30: WW.WW)
+  ```
+- Если в истории есть запись за предыдущий торговый день, строка включает `±X.XX` рядом с каждой парой.
 
 **Приоритет:** Must have.
 

@@ -250,16 +250,22 @@ currency_rate.py [-h] [--currency {usd,eur,all}] [--source {auto,cbr,fallback}]
    ```
 4. `digest`:
    ```
-   USD/RUB: 92.45 (+0.12, SMA30: 91.80) | EUR/RUB: 101.23 (-0.05, SMA30: 100.50)
+   USD/RUB: 92.45 (SMA30: 91.80)
+   EUR/RUB: 101.23 (SMA30: 100.50)
+   ```
+   При наличии изменения за предыдущий день:
+   ```
+   USD/RUB: 92.45 (+0.12, SMA30: 91.80)
+   EUR/RUB: 101.23 (-0.05, SMA30: 100.50)
    ```
 
 ### SR-10 — Cron-интеграция
 **Требования:**
-1. Задание `currency-rate-daily-update`: `0 12 * * *` MSK.
-2. Команда через wrapper: `currency_rate_update_wrapper.sh` → `currency_rate.py --timeout 15 "$@" update`.
+1. Задание `currency-rate-daily-update`: `45 7 * * *` MSK (перед `daily-telegram-digest`).
+2. Команда через wrapper: `currency_rate_update_wrapper.sh` → `.venv/bin/python currency_rate.py --timeout 15 "$@" update`.
 3. Wrapper размещается в `~/.hermes/scripts/` как Hermes-конфигурация (вне Git-репозитория `AI-harness`).
 4. Задание `daily-telegram-digest`: `0 8 * * *` MSK.
-5. `daily_digest.py` вызывает `currency_rate.py --timeout 15 report --format digest`.
+5. `daily_digest.py` вызывает `currency_rate.py --timeout 15 report --format digest`, получает многострочный блок.
 
 ### SR-11 — Настройки по умолчанию
 **Требования:**
@@ -476,11 +482,11 @@ HistoryEntry
 ### 8.4 Правила обновления истории
 
 1. `update_history(history, results, max_days)`:
-   - Для каждой пары из `results` удалить существующую запись за `today`.
-   - `entry_date = min(result.timestamp.date(), today)`.
-   - Добавить новую запись.
+   - `entry_date = result.timestamp.date()` — дата из источника (для CBR: `ValCurs/@Date`; для fallback: дата публикации в MSK).
+   - Удалить существующую запись с той же `date`.
+   - Добавить новую запись `{date, rate, source, source_name, timestamp}`.
    - Отсортировать по `date` ascending.
-   - Отсечь записи `< today - max_days`.
+   - Удалить записи старше `max_days` от `today`.
 2. Дедупликация по `date` в рамках одной пары.
 3. Сортировка перед сохранением.
 

@@ -14,7 +14,7 @@ version: 2.0.0
 - получает официальные курсы USD/RUB и EUR/RUB;
 - сохраняет историю котировок за последние 90 дней;
 - рассчитывает простую скользящую среднюю SMA30;
-- обновляет данные в фоне по cron в 12:00 MSK;
+- обновляет данные в фоне по cron в 07:45 MSK (перед дайджестом);
 - поставляет компактную строку для утреннего Telegram-дайджеста (08:00 MSK).
 
 ### Границы решения
@@ -67,7 +67,7 @@ flowchart TB
 
     subgraph "Cron / Планировщик"
         CRON08["daily-telegram-digest<br/>08:00 MSK"]
-        CRON12["currency-rate-daily-update<br/>12:00 MSK"]
+        CRON12["currency-rate-daily-update<br/>07:45 MSK"]
     end
 
     USER -->|"report / history"| CLI
@@ -99,7 +99,7 @@ flowchart TB
 | `usd_rub_rate.py` | Legacy-скрипт v1.0.0: сохраняет совместимость, делегирует запрос USD/RUB в `currency_rate.py`. |
 | `daily_digest.py` | Сборка утреннего Telegram-дайджеста; вызывает `currency_rate.py report --format digest`. |
 | `daily_digest_wrapper.sh` | Hermes-обёртка для cron `daily-telegram-digest`. |
-| `currency_rate_update_wrapper.sh` *(новый)* | Hermes-обёртка для cron `currency-rate-daily-update` (`currency_rate.py update --timeout 15`). |
+| `currency_rate_update_wrapper.sh` *(новый)* | Hermes-обёртка для cron `currency-rate-daily-update` (`currency_rate.py update --timeout 15`), использует venv-интерпретатор. |
 | `tests/test_currency_rate.py` | pytest-тесты для основной логики. |
 
 ### Внутренние компоненты `currency_rate.py`
@@ -137,16 +137,18 @@ currency_rate.py [-h] [--currency {usd,eur,all}] [--source {auto,cbr,fallback}]
 
 ### 4.2 Интерфейс `report --format digest`
 
-Выход: одна строка UTF-8 без Markdown-спецсимволов.
+Выход: многострочный UTF-8 блок без Markdown-спецсимволов.
 
 ```text
-USD/RUB: 92.45 (SMA30: 91.80) | EUR/RUB: 101.23 (SMA30: 100.50)
+USD/RUB: 92.45 (SMA30: 91.80)
+EUR/RUB: 101.23 (SMA30: 100.50)
 ```
 
 При включении изменения за день (BR-10):
 
 ```text
-USD/RUB: 92.45 (+0.12, SMA30: 91.80) | EUR/RUB: 101.23 (-0.05, SMA30: 100.50)
+USD/RUB: 92.45 (+0.12, SMA30: 91.80)
+EUR/RUB: 101.23 (-0.05, SMA30: 100.50)
 ```
 
 ### 4.3 Интерфейс `report --format json`
@@ -222,17 +224,18 @@ sequenceDiagram
 
 ### 5.2 Тихое cron-обновление (`update`)
 
-1. Cron `currency-rate-daily-update` в 12:00 MSK запускает обёртку.
-2. Обёртка активирует venv (опционально) и вызывает `currency_rate.py update --timeout 15`.
+1. Cron `currency-rate-daily-update` в 07:45 MSK запускает обёртку.
+2. Обёртка активирует venv и вызывает `.venv/bin/python currency_rate.py --timeout 15 update`.
 3. Скрипт принудительно запрашивает курсы (`update` не использует кэш по умолчанию), сохраняет `cache.json` и дополняет `history.json`.
-4. При успехе stdout пуст, stderr содержит диагностику только при `--verbose`.
-5. При ошибке — exit code != 0; cron логирует выход, но не ломает другие задания.
+4. История хранит дату из источника (`ValCurs/@Date` для CBR); пропуски рабочих дней допустимы.
+5. При успехе stdout пуст, stderr содержит диагностику только при `--verbose`.
+6. При ошибке — exit code != 0; cron логирует выход, но не ломает другие задания.
 
 ### 5.3 Формирование дайджеста
 
 1. Cron `daily-telegram-digest` в 08:00 MSK запускает `daily_digest.py`.
 2. `daily_digest.py` вызывает `currency_rate.py --timeout 15 report --format digest`.
-3. Скрипт возвращает компактную строку; при ошибке `daily_digest.py` подставляет `❌ Курс недоступен`.
+3. Скрипт возвращает многострочный блок; при ошибке `daily_digest.py` подставляет `❌ Курс недоступен`.
 
 ---
 
@@ -287,6 +290,7 @@ sequenceDiagram
 
 - История обрезается до `--history-days` (по умолчанию 90) при каждом обновлении.
 - Записи дедуплицируются по дате в рамках одной валюты (при обновлении удаляется старая запись за тот же день).
+- Дата записи берётся из источника (`ValCurs/@Date` для CBR), а не фиксируется как сегодняшняя.
 - Запись ведётся атомарно: запись во временный файл `{name}.tmp.{pid}` в той же директории, затем `os.replace(tmp, target)`.
 - При повреждении JSON скрипт стартует с пустой историей/кэша.
 
@@ -304,7 +308,7 @@ sequenceDiagram
 
 | Имя | Расписание | Команда | Назначение |
 |-----|------------|---------|------------|
-| `currency-rate-daily-update` | `0 12 * * *` MSK | `currency_rate_update_wrapper.sh` | Тихое обновление кэша и истории |
+| `currency-rate-daily-update` | `45 7 * * *` MSK | `currency_rate_update_wrapper.sh` | Тихое обновление кэша и истории перед дайджестом |
 
 ### 7.3 Wrapper `currency_rate_update_wrapper.sh`
 
@@ -316,14 +320,14 @@ set -euo pipefail
 PROJECT_DIR="${PROJECT_DIR:-/home/hermes_ai/my_agent/AI-harness}"
 VENV="${PROJECT_DIR}/.venv/bin/python"
 SCRIPT="${PROJECT_DIR}/scripts/currency_rate.py"
-exec "$VENV" "$SCRIPT" update --timeout 15
+exec "$VENV" "$SCRIPT" --timeout 15 "$@" update
 ```
 
 ### 7.4 Поведение при сбоях
 
 - Скрипт завершается с ненулевым кодом; cron-инфраструктура Hermes логирует факт сбоя.
 - `daily_digest.py` не падает: при ошибке подставляет fallback-строку.
-- Рекомендуется мониторинг: если 12:00-обновление не удалось, 08:00-дайджест на следующий день получит stale-кэш или fallback-сообщение.
+- Рекомендуется мониторинг: если 07:45-обновление не удалось, 08:00-дайджест получит stale-кэш или fallback-сообщение.
 
 ---
 
@@ -341,7 +345,7 @@ exec "$VENV" "$SCRIPT" update --timeout 15
 2. Создать обёртку `currency_rate_update_wrapper.sh` в `~/.hermes/scripts/`.
 3. Добавить cron-задание:
    ```bash
-   hermes cron add currency-rate-daily-update "0 12 * * *" ~/.hermes/scripts/currency_rate_update_wrapper.sh
+   hermes cron add currency-rate-daily-update "45 7 * * *" ~/.hermes/scripts/currency_rate_update_wrapper.sh
    ```
 4. Проверить:
    ```bash
