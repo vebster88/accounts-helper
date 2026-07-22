@@ -9,7 +9,7 @@ import { renderUnlock } from './unlock';
 import { renderProfileEditor } from './profile-editor';
 import { renderSettings } from './settings';
 
-export type Screen = 'setup' | 'unlock' | 'profile' | 'settings';
+export type Screen = 'pinSetup' | 'setup' | 'unlock' | 'profile' | 'settings';
 
 const appEl = document.getElementById('app') as HTMLDivElement;
 
@@ -72,10 +72,20 @@ export function renderEmpty(): void {
 
 export function navigateTo(screen: Screen): void {
   currentScreen = screen;
-  if (screen === 'setup') renderPinSetup();
+  if (screen === 'setup' || screen === 'pinSetup') renderPinSetup();
   else if (screen === 'unlock') renderUnlock();
   else if (screen === 'profile') {
     if (currentProfile) renderProfileEditor(currentProfile);
     else checkProfile();
   } else if (screen === 'settings') renderSettings();
+}
+
+export async function refreshAndRenderProfile(): Promise<void> {
+  const profileResp = await sendMessage<Profile>(MESSAGE_TYPES.GET_PROFILE);
+  if (profileResp.success) {
+    currentProfile = profileResp.data!;
+    renderProfileEditor(currentProfile);
+  } else {
+    renderUnlock();
+  }
 }

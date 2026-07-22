@@ -3,18 +3,18 @@ import { initializeExtension } from './lifecycle';
 initializeExtension();
 
 // Also hook context menu clicks here because background service worker should handle them.
-import { ERROR_CODES, type FieldType, FIELD_TYPES, MENU_ID_LOCK } from '../shared/constants';
+import { type FieldType, FIELD_TYPES, MENU_ID_LOCK } from '../shared/constants';
 import type { ProfileEntry } from '../shared/types';
 import { getCachedProfile } from './messaging-router';
 import { isLockMenuItem, parseMenuItemId } from './context-menu-service';
-import { clearSessionWithMemo } from './messaging-router';
+import { clearSession } from './session-key-store';
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   const parsed = parseMenuItemId(String(info.menuItemId));
   if (!parsed && !isLockMenuItem(String(info.menuItemId))) return;
 
   if (isLockMenuItem(String(info.menuItemId))) {
-    await clearSessionWithMemo();
+    await clearSession();
     return;
   }
 
@@ -22,7 +22,13 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
   const profile = getCachedProfile();
   if (!profile) {
-    // No active session: cannot insert. We could notify user but context menu can't show toasts.
+    if (tab?.id) {
+      chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        func: showPageNotification,
+        args: ['Сначала разблокируйте профиль в окне расширения'],
+      });
+    }
     return;
   }
   const entry = profile.entries.find((e) => e.id === parsed.entryId);
@@ -35,6 +41,25 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     args: [entry.value],
   });
 });
+
+function showPageNotification(message: string): void {
+  const div = document.createElement('div');
+  div.textContent = message;
+  div.style.position = 'fixed';
+  div.style.top = '16px';
+  div.style.left = '50%';
+  div.style.transform = 'translateX(-50%)';
+  div.style.zIndex = '2147483647';
+  div.style.background = '#323232';
+  div.style.color = '#fff';
+  div.style.padding = '12px 20px';
+  div.style.borderRadius = '8px';
+  div.style.fontFamily = 'sans-serif';
+  div.style.fontSize = '14px';
+  div.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+  document.body.appendChild(div);
+  setTimeout(() => div.remove(), 3000);
+}
 
 function insertValueIntoActiveElement(value: string): void {
   const el = document.activeElement as HTMLElement | null;

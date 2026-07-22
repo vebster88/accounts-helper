@@ -1,6 +1,6 @@
 // src/background/messaging-router.ts
 
-import { ERROR_CODES, STORAGE_KEYS } from '../shared/constants';
+import { ERROR_CODES } from '../shared/constants';
 import type { EncryptedProfileBlob, Profile, ProfileEntry } from '../shared/types';
 import { errorResponse, MESSAGE_TYPES, successResponse } from '../shared/messaging';
 import {
@@ -8,6 +8,7 @@ import {
   createNewEncryptedProfile,
   decryptProfile,
   encryptProfile,
+  reEncryptProfileWithDek,
   validateBlob,
 } from './crypto-service';
 import {
@@ -68,6 +69,8 @@ async function handleMessage(request: { type: string; payload?: unknown }): Prom
       return handleImportProfile(request.payload as { json: string; pin: string });
     case MESSAGE_TYPES.CHANGE_PIN:
       return handleChangePin(request.payload as { oldPin: string; newPin: string });
+    case MESSAGE_TYPES.CLEAR_ALL_DATA:
+      return handleClearAllData();
     case MESSAGE_TYPES.REQUEST_FIELD_TYPE:
       return handleRequestFieldType(request.payload as { elementInfo: unknown });
     default:
@@ -113,7 +116,6 @@ async function handleUnlock(payload: { pin: string }) {
   try {
     const { profile, dek } = await decryptProfile(pin, blob);
     await storeDek(dek);
-    await storePinMemo(dek, pin);
     await resetAttempts();
     cachedBlob = blob;
     cachedProfile = profile;
@@ -131,9 +133,18 @@ async function handleUnlock(payload: { pin: string }) {
 }
 
 async function handleLock() {
-  await clearSessionWithMemo();
+  await clearSession();
   cachedProfile = null;
   cachedBlob = null;
+  return successResponse({ success: true });
+}
+
+async function handleClearAllData() {
+  await clearSession();
+  cachedProfile = null;
+  cachedBlob = null;
+  await clearProfile();
+  rebuildMenu();
   return successResponse({ success: true });
 }
 
@@ -160,8 +171,6 @@ async function handleSaveEntry(payload: { entry: Partial<ProfileEntry> }) {
 
   let profile = cachedProfile;
   if (!profile) {
-    // Need PIN to decrypt; but we have DEK already. Derive profile from DEK by trial is impossible;
-    // require that popup has unlocked and profile is cached. If not, session expired.
     return errorResponse(ERROR_CODES.E_SESSION_EXPIRED);
   }
 
@@ -184,13 +193,8 @@ async function handleSaveEntry(payload: { entry: Partial<ProfileEntry> }) {
     updatedAt: nowIso(),
   };
 
-  const pin = await recoverPinFromDek(dek, blob);
-  if (!pin) {
-    return errorResponse(ERROR_CODES.E_SESSION_EXPIRED);
-  }
-
   const updatedProfile = addOrUpdateEntry(profile, entry);
-  const newBlob = await encryptProfile(pin, updatedProfile, blob);
+  const newBlob = await reEncryptProfileWithDek(dek, updatedProfile, blob);
   await saveBlob(newBlob);
   cachedBlob = newBlob;
   cachedProfile = updatedProfile;
@@ -209,11 +213,7 @@ async function handleDeleteEntry(payload: { id: string }) {
     return errorResponse(ERROR_CODES.E_CRYPTO_DECRYPT);
   }
   const updatedProfile = deleteEntryById(cachedProfile, payload.id);
-  const pin = await recoverPinFromDek(dek, blob);
-  if (!pin) {
-    return errorResponse(ERROR_CODES.E_SESSION_EXPIRED);
-  }
-  const newBlob = await encryptProfile(pin, updatedProfile, blob);
+  const newBlob = await reEncryptProfileWithDek(dek, updatedProfile, blob);
   await saveBlob(newBlob);
   cachedBlob = newBlob;
   cachedProfile = updatedProfile;
@@ -283,6 +283,7 @@ async function handleChangePin(payload: { oldPin: string; newPin: string }) {
     const newBlob = await changePin(oldPin, newPin, blob);
     await saveBlob(newBlob);
     cachedBlob = newBlob;
+    cachedProfile = null;
     const { dek } = await decryptProfile(newPin, newBlob);
     await storeDek(dek);
     return successResponse({ success: true });
@@ -293,8 +294,6 @@ async function handleChangePin(payload: { oldPin: string; newPin: string }) {
 }
 
 async function handleRequestFieldType(payload: { elementInfo: unknown }) {
-  // We cannot determine type in service worker. The content script should compute it.
-  // This handler is a no-op for routing; content script will send its own detection or respond.
   void payload;
   return successResponse({ menuUpdated: true });
 }
@@ -304,56 +303,6 @@ async function handleRequestFieldType(payload: { elementInfo: unknown }) {
 function rebuildMenu(): void {
   if (!cachedProfile) return;
   buildContextMenu(cachedProfile, getLastDetectedType() || { type: null, confidence: 'none', score: 0 });
-}
-
-// Recover PIN from DEK: not possible cryptographically. In this architecture the popup must have PIN
-// to save. Instead we keep a tiny encrypted memo of the PIN inside chrome.storage.session.
-// We avoid storing plaintext, but this is a convenience. For MVP, when save entry is called,
-// we use the current session token if present. To avoid storing PIN, we require caller to pass
-// pin again via payload; but the contract in spec says SAVE_ENTRY payload is just entry.
-// Workaround: we keep `accountsHelper.pinMemo` encrypted with DEK in session storage.
-
-const PIN_MEMO_KEY = `${STORAGE_KEYS.encryptedProfile}pinMemo`;
-
-export async function storePinMemo(dek: CryptoKey, pin: string): Promise<void> {
-  const iv = crypto.getRandomValues(new Uint8Array(12));
-  const ciphertext = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv },
-    dek,
-    new TextEncoder().encode(pin),
-  );
-  await chrome.storage.session.set({
-    [PIN_MEMO_KEY]: { iv: Array.from(iv), data: Array.from(new Uint8Array(ciphertext)) },
-  });
-}
-
-async function recoverPinFromDek(dek: CryptoKey, _blob: EncryptedProfileBlob): Promise<string | null> {
-  try {
-    const result = await chrome.storage.session.get(PIN_MEMO_KEY);
-    const memo = result[PIN_MEMO_KEY] as { iv: number[]; data: number[] } | undefined;
-    if (!memo) return null;
-    const iv = new Uint8Array(memo.iv);
-    const ciphertext = new Uint8Array(memo.data);
-    const decrypted = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, dek, ciphertext);
-    return new TextDecoder().decode(decrypted);
-  } catch {
-    return null;
-  }
-}
-
-export async function removePinMemo(): Promise<void> {
-  try {
-    await chrome.storage.session.remove(PIN_MEMO_KEY);
-  } catch {
-    // Ignore.
-  }
-}
-
-// Override session clear to also remove memo.
-const originalClearSession = clearSession;
-export async function clearSessionWithMemo(): Promise<void> {
-  await originalClearSession();
-  await removePinMemo();
 }
 
 // Export initializers.

@@ -1,8 +1,8 @@
 // src/popup/entry-form.ts
 
 import { FIELD_TYPE_LABELS, FIELD_TYPES, type FieldType } from '../shared/constants';
-import type { Profile, ProfileEntry } from '../shared/types';
-import { getAppEl, navigateTo, setCurrentProfile } from './app';
+import type { ProfileEntry } from '../shared/types';
+import { getAppEl, navigateTo } from './app';
 import { sendMessage, MESSAGE_TYPES } from '../shared/messaging';
 import { formatError, normalizeEntryValue, validateEntry } from '../shared/validation';
 
@@ -77,29 +77,7 @@ export function renderEntryForm(entry?: ProfileEntry): void {
 
     const resp = await sendMessage<ProfileEntry>(MESSAGE_TYPES.SAVE_ENTRY, { entry: entryPayload });
     if (resp.success) {
-      const saved = resp.data!;
-      const current = window.__accountsHelperProfile as Profile | undefined;
-      if (current) {
-        const others = current.entries.filter((e) => e.id !== saved.id);
-        if (saved.isDefault) {
-          others.forEach((e) => {
-            if (e.type === saved.type) e.isDefault = false;
-          });
-        }
-        const updated: Profile = {
-          ...current,
-          updatedAt: new Date().toISOString(),
-          entries: [...others, saved].sort((a, b) => {
-            const typeOrder = Object.keys(FIELD_TYPE_LABELS);
-            return typeOrder.indexOf(a.type) - typeOrder.indexOf(b.type);
-          }),
-        };
-        setCurrentProfile(updated);
-        window.__accountsHelperProfile = updated;
-        navigateTo('profile');
-      } else {
-        navigateTo('profile');
-      }
+      navigateTo('profile');
     } else {
       errorEl.textContent = formatError(resp.error || '', resp.error || 'Ошибка сохранения');
       if (resp.fieldErrors) {
@@ -115,10 +93,4 @@ function escapeHtml(text: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
-}
-
-declare global {
-  interface Window {
-    __accountsHelperProfile?: Profile;
-  }
 }
