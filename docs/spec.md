@@ -595,4 +595,6 @@ accountshelper::fallback::email
 
 | Версия | Дата | Автор | Изменения |
 |---|---|---|---|
-| 1.0 | 2026-07-22 | Hermes Agent | Первоначальная версия System Specification на основе BRD v1.0 и HLD v1.0 |
+|| 1.0 | 2026-07-22 | Hermes Agent | Первоначальная версия System Specification на основе BRD v1.0 и HLD v1.0 |
+|| 2.0 | 2026-07-22 | Hermes Agent | Закрытие критических рисков: KDF PBKDF2-SHA256 600k, checksum SHA-256(blob)+AES-GCM tag, unified message IDs, unified session keys accountsHelper.* |
+|| 3.0 | 2026-07-22 | Hermes Agent | BR-08 переведён в Must; блокировка только при закрытии браузера; HLD синхронизирован |
