@@ -1,6 +1,6 @@
 {
   "name": "accounts-helper",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AccountsHelper Chrome extension MVP - encrypted profile with context menu auto-fill",
   "private": true,
   "type": "module",
