@@ -61,7 +61,7 @@ flowchart TB
 | Модуль | Назначение | Связь с BRD |
 |---|---|---|
 | `lifecycle.ts` | Установка/обновление расширения, инициализация контекстного меню по умолчанию | BR-01, BR-05 |
-| `crypto-service.ts` | PBKDF2/Argon2id, AES-256-GCM encrypt/decrypt, key derivation, checksum | BR-03, BRULE-04, NFR-03, NFR-04 |
+|| `crypto-service.ts` | PBKDF2-SHA256, AES-256-GCM encrypt/decrypt, key derivation, checksum | BR-03, BRULE-04, NFR-03, NFR-04 |
 | `session-key-store.ts` | Хранение развёрнутого ключа только в памяти service worker + `chrome.storage.session` | NFR-03 |
 | `profile-service.ts` | CRUD профиля через зашифрованный blob в `chrome.storage.local` | BR-04 |
 | `context-menu-service.ts` | Динамическое создание/обновление меню на основе активного поля и профиля | BR-05, BR-06, BR-07 |
@@ -157,7 +157,7 @@ flowchart TB
 | Кража данных из `chrome.storage.local` | Всё хранится в AES-256-GCM ciphertext | BR-03, NFR-03 |
 | Перехват ключа в памяти | Ключ держится только в service worker; стирается при блокировке/закрытии Chrome | NFR-03 |
 | Подбор PIN | PIN 4 цифры; блокировка после 5 неправильных попыток (BRULE-02) | BR-02, NFR-04 |
-| Слабый KDF | PBKDF2 с ≥ 600 000 итераций; предпочтительно Argon2id через Web Crypto / offscreen document | NFR-04 |
+|| Слабый KDF | **PBKDF2-SHA256 с 600 000 итераций** (Web Crypto API); Argon2id — roadmap | NFR-04 |
 | Вставка на вредоносной странице | Контекстное меню доступно на всех URL; предупреждение на non-HTTPS в будущих версиях | REG-01, REG-02 |
 | Повреждение/подмена экспорта | Контрольная сумма и version в JSON, проверка перед импортом | BR-08 |
 
@@ -167,8 +167,8 @@ flowchart TB
 Пользовательский PIN (4 цифры)
         |
         v
-   PBKDF2 / Argon2id
-   (salt, итерации/параметры Argon2)
+   PBKDF2-SHA256
+   (salt, 600 000 итераций)
         |
         v
    KEK (Key Encryption Key) -- используется только для развёртывания DEK
@@ -181,12 +181,12 @@ flowchart TB
    Хранится в chrome.storage.local:
    {
      version: 1,
-     kdf: "pbkdf2-sha256" | "argon2id",
-     kdfParams: { salt, iterations/memory/parallelism },
+     kdf: "pbkdf2-sha256",
+     kdfParams: { salt, iterations: 600000 },
      encryptedDek: "base64",        // DEK, зашифрованный KEK
      iv: "base64",
      ciphertext: "base64",
-     checksum: "base64"             // HMAC-SHA256 или контрольная сумма ciphertext
+     checksum: "base64"             // SHA-256(encryptedProfileBlob)
    }
 ```
 
@@ -213,11 +213,11 @@ flowchart TB
 
 ### 7.2 `chrome.storage.session`
 
-| Ключ | Тип | Содержимое |
+|| Ключ | Тип | Содержимое |
 |---|---|---|
-| `dekHandle` | CryptoKey | Неэкспортируемый ключ AES-GCM |
-| `pinAttempts` | number | Счётчик неправильных попыток |
-| `locked` | boolean | Флаг блокировки |
+|| `accountsHelper.dekHandle` | CryptoKey | Неэкспортируемый ключ AES-GCM |
+|| `accountsHelper.pinAttempts` | number | Счётчик неправильных попыток |
+|| `accountsHelper.locked` | boolean | Флаг блокировки |
 
 ### 7.3 Структура расшифрованного профиля
 
@@ -413,9 +413,9 @@ npm run build:zip
 
 | Интеграция | Назначение | Ограничения |
 |---|---|---|
-| Chrome Extensions API | contextMenus, storage, scripting, tabs | Только MV3; нет сетевых запросов |
-| Web Crypto API | PBKDF2, Argon2id (через offscreen при необходимости), AES-GCM | Доступен в SW и popup |
-| `chrome.storage.session` | Краткосрочное хранение ключа | Очищается при закрытии браузера |
+|| Chrome Extensions API | contextMenus, storage, scripting, tabs | Только MV3; нет сетевых запросов |
+|| Web Crypto API | PBKDF2-SHA256, AES-GCM | Доступен в SW и popup |
+|| `chrome.storage.session` | Краткосрочное хранение ключа | Очищается при закрытии браузера |
 | `chrome.storage.local` | Постоянное зашифрованное хранилище | Ограничено ~5–10 MB |
 
 **Нет внешних сетевых API, backend, облачной синхронизации** (BRD, границы MVP).
@@ -425,7 +425,7 @@ npm run build:zip
 ### 12.1 Производительность
 
 - Контекстное меню появляется < 200 мс после ПКМ за счёт динамического построения на основе кешированного расшифрованного профиля в памяти SW (NFR-01).
-- Расшифровка профиля < 500 мс при PBKDF2 600k (NFR-02). Для Argon2id — параметры memory=64 MB, iterations=3, parallelism=1 как компромисс скорость/безопасность.
+- Расшифровка профиля < 500 мс при PBKDF2 600k (NFR-02).
 
 ### 12.2 Надёжность
 
@@ -461,7 +461,7 @@ npm run build:zip
 | BR-05 | Контекстное меню на полях ввода | `background/context-menu-service.ts`, `content/index.ts` | chrome.contextMenus, динамическое построение |
 | BR-06 | Автоопределение типа поля ≥ 80% | `content/field-detector.ts` | Вектор признаков + weighted score + fallback |
 | BR-07 | Корректная вставка в React/Vue/Angular | `content/field-inserter.ts` | input/change/focus/blur events, execCommand fallback |
-| BR-08 | Экспорт/импорт зашифрованного JSON | `background/export-import-service.ts`, `popup/export-import.ts` | JSON с version, kdfParams, checksum |
+| BR-08 | Экспорт/импорт зашифрованного JSON | `background/export-import-service.ts`, `popup/export-import.ts` | JSON с version, kdfParams, checksum | Must |
 
 ### 14.2 Бизнес-правила
 
@@ -482,9 +482,9 @@ npm run build:zip
 | ID | Требование | Компонент | Критерий |
 |---|---|---|---|
 | NFR-01 | Меню < 200 мс | `background/context-menu-service.ts` | Кеш профиля в памяти, лёгкое меню |
-| NFR-02 | Расшифровка < 500 мс | `background/crypto-service.ts` | PBKDF2 600k / Argon2id параметры |
+|| NFR-02 | Расшифровка < 500 мс | `background/crypto-service.ts` | PBKDF2 600k |
 | NFR-03 | Ключ только в памяти service worker | `background/session-key-store.ts` | CryptoKey в памяти + chrome.storage.session |
-| NFR-04 | PIN не хранится открыто | `background/pin-service.ts`, `crypto-service.ts` | PBKDF2/Argon2id key derivation |
+|| NFR-04 | PIN не хранится открыто | `background/pin-service.ts`, `crypto-service.ts` | PBKDF2-SHA256 key derivation |
 | NFR-05 | Обработка ошибок без падения | Все сервисы | try/catch, user-friendly сообщения |
 | NFR-06 | ≤ 3 клика для вставки | `context-menu-service.ts` | ПКМ → категория → значение |
 | NFR-07 | Масштаб 100–150% | `popup/*.ts`, CSS | Адаптивная вёрстка popup |
@@ -500,14 +500,15 @@ npm run build:zip
 
 | # | Вопрос | Владелец | Влияние |
 |---|---|---|---|
-| 1 | Утвердить выбор Vite и ванильный TS вместо Preact | Architect / PO | Выбор инструментов |
-| 2 | Подтвердить параметры PBKDF2/Argon2id (итерации, memory) | Architect / Security | Баланс NFR-02 / NFR-04 |
-| 3 | Нужен ли offscreen document для Argon2id на MV3? | Architect | Plan B для R-02 |
-| 4 | Утвердить Privacy Policy для Chrome Web Store | PO / Legal | Риск R-01 |
-| 5 | Требуется ли Human Gate перед переходом к LLD/коду? | PO | Следующий этап пайплайна |
+|| 1 | Vite + ванильный TS утверждены как инструменты MVP. | Architect / PO | ✅ Закрыто |
+|| 2 | PBKDF2-SHA256 600 000 итераций утверждён; Argon2id отложен. | Architect / Security | ✅ Закрыто |
+|| 3 | Offscreen document не требуется для MVP; Argon2id — roadmap. | Architect | ✅ Закрыто |
+|| 4 | Privacy Policy отложена; MVP — локальная установка ZIP. | PO / Legal | ⚠️ Вне MVP |
+|| 5 | Требуется Human Gate перед переходом к LLD/коду. | PO | ⏳ Следующий этап |
 
 ## 16. История изменений
 
 | Версия | Дата | Автор | Изменения |
 |---|---|---|---|
-| 1.0 | 2026-07-22 | Hermes Agent | Первоначальная версия HLD на основе BRD v1.0 |
+|| 1.0 | 2026-07-22 | Hermes Agent | Первоначальная версия HLD на основе BRD v1.0 |
+|| 1.1 | 2026-07-22 | Hermes Agent | Синхронизация со Spec v3: PBKDF2-SHA256 600k, checksum SHA-256(blob), unified session keys accountsHelper.*, Argon2id в roadmap |
