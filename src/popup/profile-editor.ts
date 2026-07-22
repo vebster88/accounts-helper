@@ -3,6 +3,7 @@
 import { FIELD_TYPE_LABELS, type FieldType } from '../shared/constants';
 import type { Profile, ProfileEntry } from '../shared/types';
 import { getAppEl, navigateTo, setCurrentProfile } from './app';
+import { sendMessage, MESSAGE_TYPES } from '../shared/messaging';
 import { renderEntryForm } from './entry-form';
 
 export function renderProfileEditor(profile: Profile): void {
@@ -54,8 +55,6 @@ export function renderProfileEditor(profile: Profile): void {
     btn.addEventListener('click', async () => {
       const id = (btn as HTMLElement).dataset.id!;
       if (!confirm('Удалить запись?')) return;
-      const { sendMessage } = await import('../shared/messaging');
-      const { MESSAGE_TYPES } = await import('../shared/messaging');
       const resp = await sendMessage(MESSAGE_TYPES.DELETE_ENTRY, { id });
       if (resp.success) {
         const updatedProfile: Profile = { ...profile, entries: profile.entries.filter((e) => e.id !== id) };

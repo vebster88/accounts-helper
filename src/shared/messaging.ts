@@ -28,16 +28,15 @@ export function errorResponse(error: string, extra?: Record<string, unknown>): M
 }
 
 export async function sendMessage<T>(type: string, payload?: unknown): Promise<MessageResponse<T>> {
-  if (typeof chrome === 'undefined' || !chrome.runtime?.sendMessage) {
-    return { success: false, error: 'Chrome runtime unavailable' };
-  }
-  return new Promise((resolve) => {
-    chrome.runtime.sendMessage({ type, payload }, (response?: MessageResponse<T>) => {
-      if (chrome.runtime.lastError) {
-        resolve({ success: false, error: chrome.runtime.lastError.message || 'Runtime error' });
-      } else {
-        resolve(response || { success: false, error: 'No response' });
-      }
-    });
-  });
+  return typeof chrome === 'undefined' || !chrome.runtime?.sendMessage
+    ? { success: false, error: 'Chrome runtime unavailable' }
+    : new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type, payload }, (response?: MessageResponse<T>) => {
+          if (chrome.runtime.lastError) {
+            resolve({ success: false, error: chrome.runtime.lastError.message || 'Runtime error' });
+          } else {
+            resolve(response || { success: false, error: 'No response' });
+          }
+        });
+      });
 }

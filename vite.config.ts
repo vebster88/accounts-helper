@@ -46,8 +46,9 @@ function manifestPlugin() {
         if (existsSync(srcPath)) {
           mkdirSync(resolve(dstPath, '..'), { recursive: true });
           let html = readFileSync(srcPath, 'utf8');
-          // Vite writes absolute paths like /popup/popup.js; extension HTML needs relative paths.
+          // Vite writes absolute paths like /popup/popup.js and adds crossorigin; extension HTML needs relative paths without crossorigin.
           html = html.replace(/(src|href)="\/([^"]+)"/g, '$1="$2"');
+          html = html.replace(/ crossorigin/g, '');
           writeFileSync(dstPath, html);
         }
       }
