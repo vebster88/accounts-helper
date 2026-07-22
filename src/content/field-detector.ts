@@ -95,8 +95,10 @@ function getAncestorText(element: Element, depth = 3): string {
   if (depth <= 0) return '';
   const parent = element.parentElement;
   if (!parent) return '';
-  const text = parent.textContent || '';
-  return text.slice(0, 200);
+  const parentText = parent.textContent || '';
+  const childText = getAncestorText(parent, depth - 1);
+  const combined = childText ? `${parentText} ${childText}` : parentText;
+  return combined.slice(0, 200);
 }
 
 export function detectFromElementInfo(info: ElementInfo): DetectedFieldType {

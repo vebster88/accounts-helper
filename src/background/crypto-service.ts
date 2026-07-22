@@ -99,6 +99,31 @@ export async function createNewEncryptedProfile(pin: string): Promise<DekBundle>
   return { dek, blob };
 }
 
+export async function reEncryptProfileWithDek(
+  dek: CryptoKey,
+  profile: Profile,
+  oldBlob: EncryptedProfileBlob,
+): Promise<EncryptedProfileBlob> {
+  const iv = crypto.getRandomValues(new Uint8Array(IV_LENGTH_BYTES));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: AES_ALGORITHM, iv: asArrayBuffer(iv) },
+    dek,
+    ENCODER.encode(JSON.stringify(profile)),
+  );
+  const blob: EncryptedProfileBlob = {
+    version: ENCRYPTION_FORMAT_VERSION,
+    kdf: 'pbkdf2-sha256',
+    kdfParams: oldBlob.kdfParams,
+    encryptedDek: oldBlob.encryptedDek,
+    dekIv: oldBlob.dekIv,
+    iv: bytesToB64(iv),
+    ciphertext: bytesToB64(new Uint8Array(ciphertext)),
+    checksum: '',
+  };
+  blob.checksum = await computeChecksum(blob);
+  return blob;
+}
+
 export async function encryptProfile(pin: string, profile: Profile, oldBlob?: EncryptedProfileBlob): Promise<EncryptedProfileBlob> {
   let dek: CryptoKey;
   let kdfParams: KdfParams;

@@ -79,12 +79,12 @@ export function renderSettings(): void {
 
   app.querySelector('#clear-all')?.addEventListener('click', async () => {
     if (!confirm('Все данные будут удалены без возможности восстановления. Продолжить?')) return;
-    const resp = await sendMessage(MESSAGE_TYPES.LOCK);
+    const resp = await sendMessage(MESSAGE_TYPES.CLEAR_ALL_DATA);
     if (resp.success) {
-      // Also ask SW to clear storage via a dedicated message or simply re-import not possible.
-      // We rely on LOCK not removing local data; clearing requires extension uninstall or storage API.
-      // For MVP, reload extension uninstall is acceptable. We navigate to setup.
-      navigateTo('setup');
+      const settingsError = app.querySelector('#settings-error') as HTMLDivElement;
+      settingsError.textContent = 'Данные удалены';
+      settingsError.className = 'success';
+      navigateTo('pinSetup');
     }
   });
 }
