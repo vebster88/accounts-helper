@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs';
 
 const projectRoot = resolve(__dirname);
 
@@ -33,6 +33,24 @@ function manifestPlugin() {
 
       // Write manifest into dist root.
       writeFileSync(resolve(distDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+
+      // Copy HTML entry points to expected extension paths and fix absolute asset paths.
+      const htmlMapping = {
+        'src/background/index.html': 'background/index.html',
+        'src/popup/index.html': 'popup/index.html',
+        'src/content/index.html': 'content/index.html',
+      };
+      for (const [srcRelative, dstRelative] of Object.entries(htmlMapping)) {
+        const srcPath = resolve(distDir, srcRelative);
+        const dstPath = resolve(distDir, dstRelative);
+        if (existsSync(srcPath)) {
+          mkdirSync(resolve(dstPath, '..'), { recursive: true });
+          let html = readFileSync(srcPath, 'utf8');
+          // Vite writes absolute paths like /popup/popup.js; extension HTML needs relative paths.
+          html = html.replace(/(src|href)="\/([^"]+)"/g, '$1="$2"');
+          writeFileSync(dstPath, html);
+        }
+      }
     },
   };
 }
@@ -49,6 +67,7 @@ export default defineConfig({
     minify: true,
     sourcemap: true,
     target: 'es2022',
+    modulePreload: false,
     rollupOptions: {
       input: {
         background: resolve(projectRoot, 'src/background/index.html'),
