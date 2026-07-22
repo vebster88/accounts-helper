@@ -244,7 +244,35 @@ toolsets: ["file", "terminal"]
 
 ### Step 6: Developer (only after decomposition approval)
 
-Run the `developer` skill with the approved specification and decomposition plan.
+```text
+goal: "Act as a software developer. Read the approved BRD, HLD, and specification and implement the feature. Do NOT read or use the quality-gate review document as a source of requirements."
+context: "BRD: <...>\nHLD: <...>\nSpec: <...>\nDecomposition plan: <...>"
+toolsets: ["file", "terminal", "code_exec"]
+```
+
+**Developer input boundary:** The Developer sub-agent must implement from the **approved specification only**:
+- `BRD.md` — for business/functional scope and priorities
+- `HLD.md` — for architecture, component boundaries, storage, security model
+- `spec.md` — for FR/SR/AC, message contracts, data-model details, test scenarios
+- `decomposition-plan.md` — for work-unit ordering and verification level
+
+The **Quality Gate review document (`review.md` or similar) is NOT an input** to the Developer. It is a control artifact for the orchestrator and the human gate. Passing it to the Developer risks:
+- implementing non-approved "minor warnings" as if they were requirements
+- conflicting priorities between the spec and reviewer opinions
+- skipping the hard human gate by letting the Developer self-remediate review findings
+
+If the Quality Gate raised findings that must be fixed before implementation, the orchestrator must first update the spec/BRD/HLD, re-run Quality Gate or human gate, and **only then** dispatch Developer with the updated, approved documents.
+
+### Orchestrator does not silently patch Developer code
+
+When the Developer returns "completed" but the code fails to build or tests fail:
+
+1. Do **not** edit the implementation files directly in the orchestrator turn.
+2. Return the failure to the Developer sub-agent with the exact error output and require remediation. The Developer owns implementation quality.
+3. If the failure is outside the Developer's scope (e.g., environment setup, missing system packages), dispatch an explicit fix-it/env sub-agent or ask the user.
+4. Only after the Developer confirms tests/build pass should the orchestrator proceed to Tester.
+
+Exception: trivial one-line fixes that are clearly environmental and do not change product logic (e.g., adding a missing `.gitignore` after the build) may be done by the orchestrator, but must be disclosed to the user. Prefer sub-agent remediation for any logic, types, crypto, messaging, or UI changes.
 
 **After the developer sub-agent returns:**
 1. Copy any new or updated scripts into `AI-harness/scripts/` (or `AI-harness/projects/<project-name>/` if they are project-specific), commit and push with a message like `feat(dev): <project> implementation`.
@@ -320,7 +348,9 @@ toolsets: ["file", "terminal"]
 
 ## Safety Rules
 
-- Never run `sudo`, `systemctl restart`, destructive commands, or network-wide changes without explicit user approval at the current step.
+- Do NOT run `sudo`, `systemctl restart`, destructive commands, or network-wide changes without explicit user approval at the current step.
+- Do NOT silently patch Developer code after sub-agent completion; return failures to Developer or dispatch a fix-it sub-agent.
+- Do NOT pass quality-gate review documents to the Developer as input; only BRD/HLD/Spec (+ decomposition plan) are implementation inputs.
 - The developer sub-agent must ask for approval before running tests that modify state or use external services.
 - Each sub-agent must fit its output within the available context window; use summaries when artifacts are large.
 - **GitHub sync rule:** project artifacts, skills, and agent definitions live in the user's GitHub repository (`AI-harness`). Push only `agents/`, `skills/`, `projects/`, `scripts/`, `docs/`; exclude archives, credentials, logs, caches, OS/IDE files. After editing skills in `~/.hermes/skills/`, copy changes back to the repo and commit/push. After pulling updates, copy `skills/` into `~/.hermes/skills/` to activate them.
