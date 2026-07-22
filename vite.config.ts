@@ -65,7 +65,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
-    minify: true,
+    minify: false,
     sourcemap: true,
     target: 'es2022',
     modulePreload: false,
