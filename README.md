@@ -41,8 +41,8 @@ npm run build      # production-сборка в dist/
 - `docs/BRD.md` — Business Requirements Document
 - `docs/HLD.md` — High-Level Design
 - `docs/spec.md` — System Specification
-- `docs/test-report.md` — Отчёт о тестировании
-- `docs/quality-gate-2-review.md` — Финальное ревью Quality Gate 2
+
+Внутренние QA-артефакты (test-report, quality-gate reviews) не публикуются в открытой репе.
 
 ## Безопасность
 
