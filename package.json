@@ -1,0 +1,31 @@
+{
+  "name": "accounts-helper",
+  "version": "1.0.0",
+  "description": "AccountsHelper Chrome extension MVP - encrypted profile with context menu auto-fill",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:zip": "npm run build && bestzip dist/accounts-helper.zip dist/",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "lint": "eslint src tests --ext .ts"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "@types/jsdom": "^28.0.3",
+    "@types/node": "^26.1.1",
+    "@typescript-eslint/eslint-plugin": "^7.0.0",
+    "@typescript-eslint/parser": "^7.0.0",
+    "bestzip": "^2.2.4",
+    "eslint": "^8.57.0",
+    "jsdom": "^24.0.0",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.11",
+    "vitest": "^1.6.0"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.8.0"
+  }
+}
